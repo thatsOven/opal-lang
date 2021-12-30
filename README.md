@@ -2,6 +2,7 @@
     
 # opal 
 opal is a WIP transcompiled programming language based on Python. 
+NOTE: It doesn't work perfectly, it still has some problems.
 # Compiler usage
 [ ] = optional
 * To compile to a `.py` file: `opalc.py pycompile input_file [output_file]`
