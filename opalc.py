@@ -638,7 +638,7 @@ class Compiler:
                                     if objNames[name] != "auto":
                                         splitted = objNames[name].split("::", maxsplit = 1)
                                         if len(splitted) == 2 and splitted[0] == "classVar":
-                                            self.out += ("\t" * tabs) + name + "=_OPAL_ASSERT_CLASSVAR_TYPE(" + splitted[1] + "," + name + ")\n"
+                                            self.out += ("\t" * tabs) + name + "=_OPAL_ASSERT_CLASSVAR_TYPE_(" + splitted[1] + "," + name + ")\n"
                                         else:
                                             self.out += ("\t" * tabs) + name + "=" + objNames[name] + "(" + name + ")\n"
                                     else:
