@@ -18,8 +18,8 @@ new int DROP_QTY          = 200,
         PARTICLE_SIZE     = 1,
         MOUSE_TOLERANCE   = 200,
         LIFESPAN_DECREASE = 3,
-        MIN_PARTICLE_QTY  = 10,
-        MAX_PARTICLE_QTY  = 30;
+        MIN_PARTICLE_QTY  = 5,
+        MAX_PARTICLE_QTY  = 15;
 
 new float PARTICLE_VELOCITY_MULTIPLIER = 0.98,
           PARTICLE_MAX_INIT_VELOCITY   = 5,
@@ -40,7 +40,7 @@ new class Particle() {
         this.pos          = pos;
         this.acceleration = Vector();
 
-        this.velocity = Vector(uniform(-1, 1), uniform(-1, 1));
+        this.velocity = Vector(uniform(-1, 1), uniform(-1, 0));
         this.velocity *= uniform(1, PARTICLE_MAX_INIT_VELOCITY);
        
         this.lifeSpan = 255;
