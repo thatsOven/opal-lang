@@ -16,7 +16,6 @@ new int DROP_QTY          = 200,
         MAX_SPEED         = 10,
         ALPHA_CHANGE      = 100,
         PARTICLE_SIZE     = 1,
-        MOUSE_TOLERANCE   = 200,
         LIFESPAN_DECREASE = 3,
         MIN_PARTICLE_QTY  = 5,
         MAX_PARTICLE_QTY  = 15;
