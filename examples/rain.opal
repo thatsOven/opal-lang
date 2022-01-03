@@ -59,7 +59,7 @@ new class Particle() {
 
         this.acceleration *= 0;
 
-        if this.pos.y >= RESOLUTION.y {
+        if this.pos.y >= RESOLUTION.y or this.pos.x < 0 or this.pos.x >= RESOLUTION.x {
             this.alive = False;
         }
     }
