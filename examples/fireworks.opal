@@ -36,6 +36,7 @@ new class Particle() {
 
         this.color    = color;
         this.lifeSpan = 255;
+        this.alive    = True;
 
         this.exploder = exploder;
     }
@@ -54,10 +55,14 @@ new class Particle() {
         this.pos      += this.velocity;
 
         this.acceleration *= 0;
+
+        if this.pos.y >= RESOLUTION.y or this.pos.x < 0 or this.pos.x >= RESOLUTION.x {
+            this.alive = False;
+        }
     }
 
     new method isAlive() {
-        return this.lifeSpan >= 0;
+        return this.lifeSpan >= 0 and this.alive;
     }
 
     new method show() {
