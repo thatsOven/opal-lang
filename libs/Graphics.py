@@ -288,5 +288,15 @@ class Graphics:
     def stopSounds(self):
         pygame.mixer.stop()
 
+    def stopPlay(self, waveforms):
+        toPlay = []
+        for waveform in waveforms:
+            toPlay.append(pygame.sndarray.make_sound(waveform.astype(numpy.int16)))
+        
+        pygame.mixer.stop()
+
+        for waveform in toPlay:
+            waveform.play()
+
     def quit(self):
         pygame.quit()
