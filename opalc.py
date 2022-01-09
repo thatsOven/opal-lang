@@ -34,12 +34,15 @@ class Compiler:
 
         self.consts = {}
 
+        self.__resetImports()
+
+        self.usedStaticfunc = False
+
+    def __resetImports(self):
         self.imports = {
             "OPAL_ASSERT_CLASSVAR": False,
             "asyncio": False
         }
-
-        self.usedStaticfunc = False
 
     def newObj(self, objNames, name, type_):
         objNames[name] = type_
@@ -782,6 +785,7 @@ class Compiler:
         return self.replaceConsts(result)
 
     def compile(self, section):
+        self.__resetImports()
         self.usedStaticfunc = False
         self.useIdentifiers = {}
         self.out = ""
