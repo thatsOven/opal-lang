@@ -172,7 +172,7 @@ new list fireworks  = [],
 
 @graphics.event(MOUSEBUTTONDOWN);
 new function click(event) {
-    useglobal fireworks, explosions;
+    global fireworks, explosions;
 
     match event.button {
         case 1 {
@@ -187,7 +187,7 @@ new function click(event) {
 
 @graphics.update;
 new function draw() {
-    useglobal fireworks, explosions;
+    global fireworks, explosions;
 
     if randint(0, 100) < ROCKET_FREQ_PERC {
         fireworks.append(Firework());

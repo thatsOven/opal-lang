@@ -421,10 +421,17 @@ class Compiler:
 
                 continue
 
-            if re.match(r"\buseglobal ", section[charPtr:]):
+            if re.match(r"\bglobal ", section[charPtr:]):
                 charPtr += 10
                 var, charPtr = self.getUntil(section, ";", charPtr)
                 self.out += ("\t" * tabs) + "global " + var + "\n"
+                
+                continue
+
+            if re.match(r"\bexternal ", section[charPtr:]):
+                charPtr += 9
+                var, charPtr = self.getUntil(section, ";", charPtr)
+                self.out += ("\t" * tabs) + "nonlocal " + var + "\n"
                 
                 continue
 
