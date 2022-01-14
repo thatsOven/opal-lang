@@ -162,7 +162,7 @@ class Merge:
             elif size <= auxSize:
                 self.__mergeUp(array, a, m, b)
             else:
-                m1 = a + (m - a) // 2
+                m1 = a + size // 2
                 m2 = lrBinarySearch(array, array[m1], m, b)
                 m3 = m1 + (m2 - m)
 

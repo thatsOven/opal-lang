@@ -125,8 +125,8 @@ class Graphics:
     def update(self, func):
         self.drawLoop = func
 
-    def run(self, draw = "default", handleQuit = True, drawBackground = True, autoUpdate = True):
-        if draw != "default":
+    def run(self, draw = None, handleQuit = True, drawBackground = True, autoUpdate = True):
+        if draw is not None:
             self.drawLoop = draw
         
         if handleQuit:
@@ -205,9 +205,9 @@ class Graphics:
         surf.fill(list(color) + [alpha])
         self.screen.blit(surf, (0, 0))
 
-    def loadImage(self, imagePath, resolution = "default"):
+    def loadImage(self, imagePath, resolution = None):
         img = pygame.image.load(imagePath).convert_alpha()
-        if resolution != "default":
+        if resolution is not None:
             img = pygame.transform.scale(img, resolution.toList(2))
         return img
 

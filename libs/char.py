@@ -24,7 +24,7 @@ SOFTWARE.
 
 class char:
     def __init__(self, value):
-        if not type(value) in [str, int]:
+        if not type(value) in (str, int):
             raise TypeError("char class requires a str or an int object to initialize (got " + str(type(value)) + ")")
         else:
             if type(value) is str:
