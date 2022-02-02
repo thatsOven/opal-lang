@@ -84,6 +84,7 @@ class Graphics:
             self.screen = pygame.display.set_mode(self.resolution.toList(2), pygame.RESIZABLE)
 
         self.font = pygame.font.SysFont(font, fontSize)
+        self.__font = font
 
         self.caption = caption
         self.backgroundColor = backgroundColor
@@ -97,6 +98,14 @@ class Graphics:
         self.__updateSize = not fixedSize
 
         self.eventActions = {}
+
+    def getSysFont(self, font = None, size = 36):
+        if font is None:
+            return pygame.font.SysFont(self.__font, size)
+        else: return pygame.font.SysFont(font, size)
+
+    def getFont(self, font, size = 36):
+        return pygame.font.Font(font, size)
 
     def getAudioChs(self):
         return pygame.mixer.get_init()
@@ -128,7 +137,7 @@ class Graphics:
     def run(self, draw = None, handleQuit = True, drawBackground = True, autoUpdate = True):
         if draw is not None:
             self.drawLoop = draw
-        
+
         if handleQuit:
             def handle(ev):
                 quit()
@@ -143,7 +152,7 @@ class Graphics:
             if self.__updateSize:
                 self.screen     = pygame.display.get_surface()
                 self.resolution = Vector().fromList(self.screen.get_size())
-            
+
             if self.__showFps:
                 self.setCaption(self.caption + " - FPS: " + str(round(self.__clock.get_fps(), 3)), False)
 
@@ -166,7 +175,7 @@ class Graphics:
 
     def getMousePos(self):
         return Vector().fromList(pygame.mouse.get_pos())
-        
+
     def rawUpdate(self):
         pygame.display.update()
 
@@ -229,7 +238,7 @@ class Graphics:
         rectSurf = pygame.Surface(lSize)
         pygame.draw.rect(rectSurf, color, [0, 0] + lSize, thickness)
         rectSurf.set_alpha(alpha)
-        
+
         if fromCenter:
             self.screen.blit(rectSurf, (position - (size // 2) + self.center).toList(2))
         else:
@@ -249,7 +258,7 @@ class Graphics:
 
     def fastCircle(self, center : Vector, radius, color = (255, 255, 255), thickness = 0):
         pygame.draw.circle(self.screen, color, (center + self.center).toList(2), radius, thickness)
-        
+
     def polygon(self, points, color = (255, 255, 255), thickness = 0):
         ptsCopy = []
         for i in range(len(points)):
@@ -257,7 +266,25 @@ class Graphics:
 
         pygame.draw.polygon(self.screen, color, ptsCopy, thickness)
 
-    def drawText(self, text : list, pos : Vector, shadow = False, color = (255, 255, 255), shadowOffset = 4):
+    def simpleText(self, text : str, pos : Vector, color = (255, 255, 255), centerX = False, centerY = False, font = None):
+        if font is None:
+            font = self.font
+
+        s = font.render(text, True, color)
+        r = s.get_rect()
+
+        if centerX:
+            pos.x -= r.width // 2
+        if centerY:
+            pos.y -= r.height // 2
+
+        self.screen.blit(s, pos.toList(2))
+
+
+    def drawText(self, text : list, pos : Vector, shadow = False, color = (255, 255, 255), shadowOffset = 4, font = None):
+        if font is None:
+            font = self.font
+
         origColor = color
         origPos   = pos.copy()
 
@@ -265,21 +292,24 @@ class Graphics:
             shadowOffset = 0
         else:
             color = (0, 0, 0)
-        
+
         for _ in range(2 if shadow else 1):
             for i in range(len(text)):
-                self.screen.blit(self.font.render(text[i], True, color), (pos + shadowOffset).toList(2))
-                pos.y += self.font.get_height()
+                self.screen.blit(font.render(text[i], True, color), (pos + shadowOffset).toList(2))
+                pos.y += font.get_height()
 
             color        = origColor
             pos          = origPos.copy()
             shadowOffset = 0
 
-    def drawOutlineText(self, text : list, pos : Vector, color = (255, 255, 255), outlineColor = (0, 0, 0), outlineSize = 2):
+    def drawOutlineText(self, text : list, pos : Vector, color = (255, 255, 255), outlineColor = (0, 0, 0), outlineSize = 2, font = None):
+        if font is None:
+            font = self.font
+
         intPos = pos.copy()
         for line in text:
-            self.screen.blit(_renderOutlineText(line, self.font, color, outlineColor, outlineSize), intPos.toList(2))
-            intPos.y += self.font.get_height()
+            self.screen.blit(_renderOutlineText(line, font, color, outlineColor, outlineSize), intPos.toList(2))
+            intPos.y += font.get_height()
 
     def playWaveforms(self, waveforms):
         for waveform in waveforms:
@@ -292,7 +322,7 @@ class Graphics:
         toPlay = []
         for waveform in waveforms:
             toPlay.append(pygame.sndarray.make_sound(waveform.astype(numpy.int16)))
-        
+
         pygame.mixer.stop()
 
         for waveform in toPlay:
