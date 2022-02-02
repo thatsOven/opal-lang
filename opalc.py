@@ -1,7 +1,7 @@
 """
 MIT License
 
-Copyright (c) 2020-2022 thatsOven
+Copyright (c) 2020-2021 thatsOven
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,8 +36,6 @@ class Compiler:
 
         self.__resetImports()
 
-        self.usedStaticfunc = False
-
     def __resetImports(self):
         self.imports = {
             "OPAL_ASSERT_CLASSVAR": False,
@@ -46,7 +44,7 @@ class Compiler:
 
     def newObj(self, objNames, name, type_):
         objNames[name] = type_
-        
+
     def newIdentifier(self, name, as_):
         self.useIdentifiers[name] = as_
 
@@ -61,7 +59,7 @@ class Compiler:
 
             if pCount == 0:
                 return charPtr
-            
+
             charPtr += 1
 
     def getUntil(self, section, ch, charPtr):
@@ -126,7 +124,7 @@ class Compiler:
             while section[charPtr] == " ":
                 charPtr += 1
                 if charPtr >= len(section): break
-            
+
             if re.match(r"\bcase", section[charPtr:]):
                 charPtr += 4
                 caseVal, charPtr = self.getUntil(section, "{", charPtr)
@@ -147,7 +145,7 @@ class Compiler:
                 else:
                     self.out += ("\t" * tabs)  + "if _OPAL_MATCHED_" + str(tabs) + ":\n"
                     return self.__compiler(block, objNames, tabs + 1)
-                    
+
             if re.match(r"\bdefault", section[charPtr:]):
                 charPtr += 7
                 _, charPtr = self.getUntil(section, "{", charPtr)
@@ -167,6 +165,15 @@ class Compiler:
             names = expr.split(op, maxsplit = 1)
             if len(names) == 2: return op, names
 
+    def __isBlockNew(self, section):
+        return (
+            re.match(r"\bfunction ",       section) or
+            re.match(r"\bclass ",          section) or
+            re.match(r"\bstaticmethod ",   section) or
+            re.match(r"\bclassmethod ",    section) or
+            re.match(r"\bmethod ",         section)
+            )
+
     def __compiler(self, section, objNames, tabs):
         charPtr = 0
         lastPkg = ""
@@ -180,18 +187,14 @@ class Compiler:
             found = False
             if re.match(r"\bnew ", section[charPtr:]):
                 charPtr += 4
-                if re.match(r"\bfunction ", section[charPtr:]) or re.match(r"\bclass ", section[charPtr:]) or re.match(r"\bstaticfunction ", section[charPtr:]) or re.match(r"\bstaticmethod ", section[charPtr:]) or re.match(r"\bclassmethod ", section[charPtr:]) or re.match(r"\bmethod ", section[charPtr:]):
+                if self.__isBlockNew(section[charPtr:]):
                     hasThis = False
-                    if re.match(r"\bfunction ", section[charPtr:]): 
+                    if re.match(r"\bfunction ", section[charPtr:]):
                         translates = "def"
                         charPtr += 9
                     elif re.match(r"\bstaticmethod ", section[charPtr:]):
                         translates = "@staticmethod\n" + ("\t" * tabs) + "def"
                         charPtr += 13
-                    elif re.match(r"\bstaticfunction ", section[charPtr:]):
-                        self.usedStaticfunc = True
-                        translates = "@staticmethod\n" + ("\t" * tabs) + "def"
-                        charPtr += 15
                     elif re.match(r"\bclassmethod ", section[charPtr:]):
                         translates = "@classmethod\n" + ("\t" * tabs) + "def"
                         charPtr += 11
@@ -218,16 +221,21 @@ class Compiler:
                     if hasThis:
                         args = "this," + args
 
-                    params = re.split(r'(?![^(]*\)),', args.replace(" ", ""))
-                    params = [(x if not x in ["*args", "**kwargs"] else ("args" if x == "*args" else "kwargs")) for x in params]
-
-                    paramNames = []
+                    rawParams = re.split(r'(?![^(]*\)),', args.replace(" ", ""))
 
                     if translates != "class":
-                        for var in params:
-                            if var != "":
-                                var = var.split("=", maxsplit = 1)
-                                paramNames.append(var[0])
+                        params = []
+
+                        for param in rawParams:
+                            if   param.startswith("**"):
+                                fparam = param[2:].strip()
+                            elif param.startswith("*"):
+                                fparam = param[1:].strip()
+                            else:
+                                fparam = param
+
+                            if fparam != "":
+                                params.append(fparam.split("=", maxsplit = 1)[0])
 
                     _, charPtr = self.getUntil(section, "{", charPtr)
                     block, charPtr = self.getBlock(section, "{", "}", charPtr)
@@ -244,13 +252,13 @@ class Compiler:
                         if translates == "class": self.__compiler(block, objNames, tabs + 1)
                         else:
                             intObjs = objNames.copy()
-                            for name in paramNames:
+                            for name in params:
                                 intObjs[name] = "dynamic"
                             self.__compiler(block, intObjs, tabs + 1)
                         return self.__compiler(section[charPtr:], objNames, tabs)
                 else:
                     info, charPtr = self.getUntil(section, ";", charPtr)
-                    
+
                     tmp = info.split(" ", maxsplit = 1)
                     varType = tmp[0].replace(" ", "")
                     varList = re.split(r'(?![^(]*\)),', tmp[1])
@@ -273,7 +281,7 @@ class Compiler:
                                         self.imports["OPAL_ASSERT_CLASSVAR"] = True
                                 else:
                                     self.newObj(objNames, name, varType)
-                            else: 
+                            else:
                                 self.newObj(objNames, name, "dynamic")
                         else:
                             name = internalInfo[0].replace(" ", "")
@@ -295,7 +303,7 @@ class Compiler:
                                         self.out += ("\t" * tabs) + name + "=" + internalInfo[1] + "\n"
                                     else:
                                         self.out += ("\t" * tabs) + name + "=" + varType + "(" + internalInfo[1] + ")" + "\n"
-                            else: 
+                            else:
                                 self.newObj(objNames, name, "dynamic")
                                 self.out += ("\t" * tabs) + name + "=" + internalInfo[1] + "\n"
 
@@ -324,7 +332,7 @@ class Compiler:
                         lastPkg = ""
 
                 self.out += ("\t" * tabs) + "import " + module + "\n"
-                
+
                 continue
 
             if re.match(r"\basync:", section[charPtr:]):
@@ -421,25 +429,18 @@ class Compiler:
 
                 continue
 
-            if re.match(r"\bglobal ", section[charPtr:]):
+            if re.match(r"\buseglobal ", section[charPtr:]):
                 charPtr += 10
                 var, charPtr = self.getUntil(section, ";", charPtr)
                 self.out += ("\t" * tabs) + "global " + var + "\n"
-                
-                continue
 
-            if re.match(r"\bexternal ", section[charPtr:]):
-                charPtr += 9
-                var, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "nonlocal " + var + "\n"
-                
                 continue
 
             if re.match(r"\?[a-zA-Z0-9]+", section[charPtr:]):
                 charPtr += 1
                 value, charPtr = self.getUntil(section, ";", charPtr)
                 self.out += ("\t" * tabs) + "print(" + value + ")\n"
-                
+
                 continue
 
             if re.match(r"\!.*", section[charPtr:]):
@@ -456,7 +457,7 @@ class Compiler:
             if re.match(r"\btry\s*\{", section[charPtr:]):
                 charPtr += 3
                 return self.simpleBlock(section, objNames, "try", charPtr, tabs)
-            
+
             if re.match(r"\bcatch.*\{", section[charPtr:]):
                 charPtr += 5
                 return self.simpleBlockStatement(section, objNames, "except", charPtr, tabs)
@@ -484,7 +485,7 @@ class Compiler:
             if re.match(r"\bwith.+\{", section[charPtr:]):
                 charPtr += 4
                 return self.simpleBlockStatement(section, objNames, "with", charPtr, tabs)
-            
+
             if re.match(r"\bdo.+\{", section[charPtr:]):
                 charPtr += 2
                 condition, charPtr = self.getUntil(section, "{", charPtr)
@@ -578,7 +579,7 @@ class Compiler:
                             self.out += ("\t" * tabs) + "for _ in range(" + value + "):\n"
                         else:
                             self.out += ("\t" * tabs) + "for _ in range(" + value + ",1):\n"
-    
+
                         objNames = self.__compiler(block, objNames, tabs + 1)
                         return self.__compiler(section[charPtr:], objNames, tabs)
 
@@ -618,7 +619,7 @@ class Compiler:
 
                     if len(splitted) == 2:
                         self.out += ("\t" * (tabs + 1)) + splitted[0].replace(" ", "") + "=" + splitted[1] + "\n"
-                
+
                 continue
 
             if re.match(r"\bdynamic:\s*", section[charPtr:]):
@@ -767,13 +768,13 @@ class Compiler:
                 if re.match(r"\binclude\s+.+", expr):
                     fileDir, _ = self.getUntilEnd(expr, 8)
                     result += self.__preCompiler(self.readFile(self.getDir(fileDir)))
-                    
+
                     continue
 
                 if re.match(r"\bincludeDirectory\s+.+", expr):
                     rawDir, _ = self.getUntilEnd(expr, 17)
                     fileDir = self.getDir(rawDir)
-                    
+
                     included = ""
                     for file in [os.path.join(fileDir, f) for f in os.listdir(fileDir) if f.endswith(".opal")]:
                         included += self.readFile(file) + "\n"
@@ -793,18 +794,15 @@ class Compiler:
 
     def compile(self, section):
         self.__resetImports()
-        self.usedStaticfunc = False
         self.useIdentifiers = {}
         self.out = ""
 
         self.__compiler(self.__preCompiler(section).replace("\t", "").replace("\n", ""), {}, 0)
-        if self.usedStaticfunc:
-            print('This code uses function type "staticfunction". This type is deprecated, please switch to using "staticmethod" instead')
         return self.out
 
     def compileFile(self, fileIn):
         return self.compile(self.readFile(fileIn))
-    
+
     def compileToPY(self, fileIn, fileOut):
         with open(fileOut, "w") as txt:
             txt.write(self.compile(self.readFile(fileIn)))
@@ -826,7 +824,7 @@ if __name__ == "__main__":
             else:
                 compiler.compileToPY(sys.argv[2], sys.argv[3])
             print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
-            
+
         elif sys.argv[1] == "compile":
             if len(sys.argv) == 2:
                 print('opal compiler: input file required for command "compile"')
