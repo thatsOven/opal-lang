@@ -422,7 +422,7 @@ class Compiler:
 
                 continue
                 
-            if re.match(r"\super", section[charPtr:]):
+            if re.match(r"\bsuper\W", section[charPtr:]):
                 charPtr += 5
                 value, charPtr = self.getUntil(section, ";", charPtr)
                 self.out += ("\t" * tabs) + "super" + value + "\n"
