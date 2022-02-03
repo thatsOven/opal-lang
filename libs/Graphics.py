@@ -179,11 +179,18 @@ class Graphics:
     def rawUpdate(self):
         pygame.display.update()
 
+    def updateEvents(self):
+        for event in pygame.event.get():
+            if event.type in self.eventActions:
+                self.eventActions[event.type](event)
+
     def forceDraw(self, handleQuit = True, drawBackground = True):
         if handleQuit:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    quit()
+            def handle(ev):
+                quit()
+            self.eventActions[pygame.QUIT] = handle
+
+        self.updateEvents()
 
         pygame.display.update()
 
