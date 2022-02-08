@@ -207,23 +207,20 @@ class Compiler:
                         translates = "class"
                         charPtr += 6
 
-                    name, charPtr = self.getUntil(section, "(", charPtr)
-                    name = name.replace(" ", "")
-
                     if translates != "class":
+                        name, charPtr = self.getUntil(section, "(", charPtr)
+                        name = name.replace(" ", "")
+
                         self.newObj(objNames, name, "untyped")
-                    else:
-                        self.newObj(objNames, name, "class")
 
-                    args, charPtr = self.getBlock(section, "(", ")", charPtr)
-                    charPtr += 1
+                        args, charPtr = self.getBlock(section, "(", ")", charPtr)
+                        charPtr += 1
 
-                    if hasThis:
-                        args = "this," + args
+                        if hasThis:
+                            args = "this," + args
 
-                    rawParams = re.split(r'(?![^(]*\)),', args.replace(" ", ""))
+                        rawParams = re.split(r'(?![^(]*\)),', args.replace(" ", ""))
 
-                    if translates != "class":
                         params = []
 
                         for param in rawParams:
@@ -237,7 +234,19 @@ class Compiler:
                             if fparam != "":
                                 params.append(fparam.split("=", maxsplit = 1)[0])
 
-                    _, charPtr = self.getUntil(section, "{", charPtr)
+                        _, charPtr = self.getUntil(section, "{", charPtr)
+                    else:
+                        info, charPtr = self.getUntil(section, "{", charPtr)
+                        info = info.split(":", maxsplit = 1)
+                        name = info[0].replace(" ", "")
+
+                        if len(info) == 2:
+                            args = info[1].replace(" ", "")
+                        else:
+                            args = ""
+
+                        self.newObj(objNames, name, "class")
+
                     block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
                     if args.replace(" ", "") == "" and translates == "class":
@@ -421,7 +430,7 @@ class Compiler:
                 self.out += ("\t" * tabs) + "return " + value + "\n"
 
                 continue
-                
+
             if re.match(r"\bsuper\W", section[charPtr:]):
                 charPtr += 5
                 value, charPtr = self.getUntil(section, ";", charPtr)
@@ -436,10 +445,17 @@ class Compiler:
 
                 continue
 
-            if re.match(r"\buseglobal ", section[charPtr:]):
-                charPtr += 10
+            if re.match(r"\bglobal ", section[charPtr:]):
+                charPtr += 7
                 var, charPtr = self.getUntil(section, ";", charPtr)
                 self.out += ("\t" * tabs) + "global " + var + "\n"
+
+                continue
+
+            if re.match(r"\bexternal ", section[charPtr:]):
+                charPtr += 9
+                var, charPtr = self.getUntil(section, ";", charPtr)
+                self.out += ("\t" * tabs) + "nonlocal " + var + "\n"
 
                 continue
 

@@ -34,14 +34,14 @@ new <Vector> GRAVITY = Vector(0, 0.2);
 
 new <Graphics> graphics = Graphics(RESOLUTION, caption = "Rain");
 
-new class Particle() {
+new class Particle {
     new method __init__(pos) {
         this.pos          = pos;
         this.acceleration = Vector();
 
         this.velocity = Vector(uniform(-1, 1), uniform(-1, 0));
         this.velocity *= uniform(1, PARTICLE_MAX_INIT_VELOCITY);
-       
+
         this.lifeSpan = 255;
         this.alive    = True;
     }
@@ -73,7 +73,7 @@ new class Particle() {
     }
 }
 
-new class Explosion() {
+new class Explosion {
     new method __init__(pos) {
         this.pos = pos;
         this.particles = [];
@@ -109,7 +109,7 @@ new class Explosion() {
     }
 }
 
-new class Drop() {
+new class Drop {
     new method __init__() {
         this.__reset();
         this.explosion = Explosion(this.pos);
@@ -145,7 +145,7 @@ new class Drop() {
             this.pos.x = Utils.limitToRange(this.pos.x, 0, RESOLUTION.x, True);
 
             graphics.line(this.pos, this.pos + this.speed.magnitude(this.len), RAIN_COLOR, this.thickness);
-        }        
+        }
     }
 }
 

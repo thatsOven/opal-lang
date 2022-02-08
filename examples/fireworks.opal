@@ -22,7 +22,7 @@ new <Vector> GRAVITY = Vector(0, 0.2);
 
 new <Graphics> graphics = Graphics(RESOLUTION, caption = "Fireworks");
 
-new class Particle() {
+new class Particle {
     new method __init__(pos, color = (255, 255, 255), exploder = False) {
         this.pos          = pos;
         this.acceleration = Vector();
@@ -74,16 +74,16 @@ new class Particle() {
     }
 }
 
-new class Explosion() {
+new class Explosion {
     new method __init__(pos, color = None) {
         this.pos = pos;
-        
+
         if color is None {
             this.color = (randint(0, 255), randint(0, 255), randint(0, 255));
         } else {
             this.color = color;
         }
-        
+
         this.particles = [];
     }
 
@@ -91,7 +91,7 @@ new class Explosion() {
         if pos is not None {
             this.pos = pos;
         }
-        
+
         if RAINBOW_EXPLOSION {
             repeat randint(MIN_PARTICLE_QTY, MAX_PARTICLE_QTY) {
                 this.particles.append(Particle(this.pos, (randint(0, 255), randint(0, 255), randint(0, 255)), True));
@@ -123,7 +123,7 @@ new class Explosion() {
     }
 }
 
-new class Firework() {
+new class Firework {
     new method __init__(pos = None) {
         this.color = (randint(0, 255), randint(0, 255), randint(0, 255));
 
@@ -194,7 +194,7 @@ new function draw() {
     }
 
     graphics.fillAlpha((0, 0, 0), ALPHA_CHANGE);
-    
+
     for firework in fireworks {
         firework.update();
         firework.show();
