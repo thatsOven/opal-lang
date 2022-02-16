@@ -124,7 +124,7 @@ class Graphics:
         pygame.display.set_caption(caption)
 
     def translate(self, point : Vector):
-        self.center = point
+        self.center += point
 
     def resetCenter(self):
         self.center = Vector(0, 0)
@@ -285,7 +285,7 @@ class Graphics:
         if centerY:
             pos.y -= r.height // 2
 
-        self.screen.blit(s, pos.toList(2))
+        self.screen.blit(s, (pos + self.center).toList(2))
 
 
     def drawText(self, text : list, pos : Vector, shadow = False, color = (255, 255, 255), shadowOffset = 4, font = None):
@@ -300,10 +300,12 @@ class Graphics:
         else:
             color = (0, 0, 0)
 
+        intPos = pos.copy() + self.center
+
         for _ in range(2 if shadow else 1):
             for i in range(len(text)):
-                self.screen.blit(font.render(text[i], True, color), (pos + shadowOffset).toList(2))
-                pos.y += font.get_height()
+                self.screen.blit(font.render(text[i], True, color), (intPos + shadowOffset).toList(2))
+                intPos.y += font.get_height()
 
             color        = origColor
             pos          = origPos.copy()
@@ -313,7 +315,8 @@ class Graphics:
         if font is None:
             font = self.font
 
-        intPos = pos.copy()
+        intPos = pos.copy() + self.center
+
         for line in text:
             self.screen.blit(_renderOutlineText(line, font, color, outlineColor, outlineSize), intPos.toList(2))
             intPos.y += font.get_height()
