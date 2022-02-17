@@ -325,7 +325,7 @@ new class Program : Graphics {
                 this.__reset();
                 return;
             } elif this.grid.pressed[K_n] {
-                this.grid.pressed[K_y] = False;
+                this.grid.pressed[K_n] = False;
                 this.__renderGrid();
 
                 return;
