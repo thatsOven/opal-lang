@@ -27,6 +27,8 @@ from timeit import default_timer
 
 OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "=")
 
+class OpalSyntaxError(SyntaxError): pass
+
 class Compiler:
     def __init__(self):
         self.out = ""
@@ -73,7 +75,7 @@ class Compiler:
             charPtr += 1
 
             if charPtr >= len(section):
-                raise NameError('opal exception: expecting character "' + ch + '"')
+                raise OpalSyntaxError('opal exception: expecting character "' + ch + '"')
         charPtr += 1
 
         return content, charPtr
@@ -329,7 +331,7 @@ class Compiler:
                         self.newObj(objNames, item, "untyped")
                     else:
                         if lastPkg == "":
-                            raise NameError('opal exception: "import *" has been found with no defined package.')
+                            raise OpalSyntaxError('opal exception: "import *" has been found with no defined package.')
                         else:
                             modl = importlib.import_module(lastPkg)
                             for name in dir(modl):
@@ -442,6 +444,20 @@ class Compiler:
                 charPtr += 4
                 name, charPtr = self.getUntil(section, ";", charPtr)
                 self.out += ("\t" * tabs) + "del " + name + "\n"
+
+                continue
+
+            if re.match(r"\bassert ", section[charPtr:]):
+                charPtr += 7
+                name, charPtr = self.getUntil(section, ";", charPtr)
+                self.out += ("\t" * tabs) + "assert " + name + "\n"
+
+                continue
+
+            if re.match(r"\byield ", section[charPtr:]):
+                charPtr += 6
+                name, charPtr = self.getUntil(section, ";", charPtr)
+                self.out += ("\t" * tabs) + "yield " + name + "\n"
 
                 continue
 
