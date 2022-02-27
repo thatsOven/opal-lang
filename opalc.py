@@ -643,7 +643,10 @@ class Compiler:
                 variables = re.split(r'(?![^(]*\)),', block)
                 names     = [x.split("=", maxsplit = 1)[0].replace(" ", "") for x in variables]
 
-                self.out += ("\t" * tabs) + "class " + name + ":\n" + ("\t" * (tabs + 1))
+                if name != "":
+                    inTabs = tabs + 1
+                    self.out += ("\t" * tabs) + "class " + name + ":\n" + ("\t" * inTabs)
+                else: inTabs = tabs
 
                 for varName in names:
                     self.out += varName + ","
@@ -657,7 +660,7 @@ class Compiler:
                     splitted = varName.split("=", maxsplit = 1)
 
                     if len(splitted) == 2:
-                        self.out += ("\t" * (tabs + 1)) + splitted[0].replace(" ", "") + "=" + splitted[1] + "\n"
+                        self.out += ("\t" * inTabs) + splitted[0].replace(" ", "") + "=" + splitted[1] + "\n"
 
                 continue
 
