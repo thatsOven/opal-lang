@@ -100,9 +100,9 @@ class Compiler:
         block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
         if block.replace(" ", "") == "":
-            self.out += ("\t" * tabs) + statement + " " + condition + ":pass\n"
+            self.out += ("\t" * tabs) + statement + " " + condition.strip() + ":pass\n"
         else:
-            self.out += ("\t" * tabs) + statement + " " + condition + ":\n"
+            self.out += ("\t" * tabs) + statement + " " + condition.strip() + ":\n"
             objNames = self.__compiler(block, objNames, tabs + 1)
 
         return self.__compiler(section[charPtr:], objNames, tabs)
@@ -132,7 +132,7 @@ class Compiler:
                 caseVal, charPtr = self.getUntil(section, "{", charPtr)
                 block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
-                self.out += ("\t" * tabs) + "elif " + caseVal + "==" + value + ":\n" + ("\t" * (tabs + 1)) + "_OPAL_MATCHED_" + str(tabs) + "=True\n"
+                self.out += ("\t" * tabs) + "elif " + caseVal.strip() + "==" + value + ":\n" + ("\t" * (tabs + 1)) + "_OPAL_MATCHED_" + str(tabs) + "=True\n"
                 if block.replace(" ", "") != "":
                     objNames = self.__compiler(block, objNames, tabs + 1)
 
@@ -218,6 +218,8 @@ class Compiler:
                         args, charPtr = self.getBlock(section, "(", ")", charPtr)
                         charPtr += 1
 
+                        args = args.strip()
+
                         if hasThis:
                             args = "this," + args
 
@@ -231,7 +233,7 @@ class Compiler:
                             elif param.startswith("*"):
                                 fparam = param[1:].strip()
                             else:
-                                fparam = param
+                                fparam = param.strip()
 
                             if fparam != "":
                                 params.append(fparam.split("=", maxsplit = 1)[0])
@@ -296,6 +298,7 @@ class Compiler:
                                 self.newObj(objNames, name, "dynamic")
                         else:
                             name = internalInfo[0].replace(" ", "")
+                            internalInfo[1] = internalInfo[1].strip()
 
                             if varType != "dynamic":
                                 if re.match(r"\<.+\>", varType):
@@ -379,7 +382,7 @@ class Compiler:
                     self.newIdentifier(identifier[0], "::python")
                 else:
                     identifier[1] = identifier[1].replace(" ", "")
-                    self.newIdentifier(identifier[0], identifier[1])
+                    self.newIdentifier(identifier[0], identifier[1].strip())
 
                 continue
 
@@ -422,6 +425,7 @@ class Compiler:
             if re.match(r"\bpackage ", section[charPtr:]):
                 charPtr += 8
                 lastPkg, charPtr = self.getUntil(section, ":", charPtr)
+                lastPkg = lastPkg.strip()
                 self.out += ("\t" * tabs) + "from " + lastPkg + " "
 
                 continue
@@ -429,56 +433,56 @@ class Compiler:
             if re.match(r"\breturn ", section[charPtr:]):
                 charPtr += 7
                 value, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "return " + value + "\n"
+                self.out += ("\t" * tabs) + "return " + value.strip() + "\n"
 
                 continue
 
             if re.match(r"\bsuper\W", section[charPtr:]):
                 charPtr += 5
-                value, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "super" + value + "\n"
+                expr, charPtr = self.getUntil(section, ";", charPtr)
+                self.out += ("\t" * tabs) + "super" + expr.strip() + "\n"
 
                 continue
 
             if re.match(r"\bdel ", section[charPtr:]):
                 charPtr += 4
                 name, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "del " + name + "\n"
+                self.out += ("\t" * tabs) + "del " + name.strip() + "\n"
 
                 continue
 
             if re.match(r"\bassert ", section[charPtr:]):
                 charPtr += 7
-                name, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "assert " + name + "\n"
+                expr, charPtr = self.getUntil(section, ";", charPtr)
+                self.out += ("\t" * tabs) + "assert " + expr.strip() + "\n"
 
                 continue
 
             if re.match(r"\byield ", section[charPtr:]):
                 charPtr += 6
-                name, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "yield " + name + "\n"
+                expr, charPtr = self.getUntil(section, ";", charPtr)
+                self.out += ("\t" * tabs) + "yield " + expr.strip() + "\n"
 
                 continue
 
             if re.match(r"\bglobal ", section[charPtr:]):
                 charPtr += 7
                 var, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "global " + var + "\n"
+                self.out += ("\t" * tabs) + "global " + var.replace(" ", "") + "\n"
 
                 continue
 
             if re.match(r"\bexternal ", section[charPtr:]):
                 charPtr += 9
                 var, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "nonlocal " + var + "\n"
+                self.out += ("\t" * tabs) + "nonlocal " + var.replace(" ", "") + "\n"
 
                 continue
 
             if re.match(r"\?[a-zA-Z0-9]+", section[charPtr:]):
                 charPtr += 1
                 value, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "print(" + value + ")\n"
+                self.out += ("\t" * tabs) + "print(" + value.strip() + ")\n"
 
                 continue
 
@@ -532,7 +536,7 @@ class Compiler:
 
                 self.out += ("\t" * tabs) + "while True:\n"
                 objNames = self.__compiler(block, objNames, tabs + 1)
-                self.out += ("\t" * (tabs + 1)) + "if not (" + condition + "):break\n"
+                self.out += ("\t" * (tabs + 1)) + "if not (" + condition.strip() + "):break\n"
 
                 return self.__compiler(section[charPtr:], objNames, tabs)
 
@@ -574,7 +578,7 @@ class Compiler:
                             self.newObj(objNames, variable.split("=")[0], "dynamic")
                             statement += variable + "\n" + ("\t" * tabs)
 
-                    statement += "while " + info[1] + ":\n"
+                    statement += "while " + info[1].strip() + ":\n"
 
                 block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
@@ -597,6 +601,7 @@ class Compiler:
             if re.match(r"\brepeat.+\{", section[charPtr:]):
                 charPtr += 6
                 value, charPtr = self.getUntil(section, "{", charPtr)
+                value = value.strip()
 
                 try:
                     _ = int(value)
@@ -629,7 +634,7 @@ class Compiler:
 
                 matched = str(tabs)
                 self.out += ("\t" * tabs) + "_OPAL_MATCHED_" + matched + "=False\n" + ("\t" * tabs) + "if False:pass\n"
-                objNames = self.matchStatement(block, objNames, value, tabs)
+                objNames = self.matchStatement(block, objNames, value.strip(), tabs)
                 self.out += ("\t" * tabs) + "del _OPAL_MATCHED_" + matched + "\n"
 
                 return self.__compiler(section[charPtr:], objNames, tabs)
@@ -660,7 +665,7 @@ class Compiler:
                     splitted = varName.split("=", maxsplit = 1)
 
                     if len(splitted) == 2:
-                        self.out += ("\t" * inTabs) + splitted[0].replace(" ", "") + "=" + splitted[1] + "\n"
+                        self.out += ("\t" * inTabs) + splitted[0].replace(" ", "") + "=" + splitted[1].strip() + "\n"
 
                 continue
 
@@ -675,14 +680,16 @@ class Compiler:
                 autoTypes = []
                 if not nextUnchecked:
                     for name in varsSplitted:
+                        name = name.replace(" ", "")
                         if objNames[name] == "auto":
                             autoTypes.append("_OPAL_AUTOMATIC_TYPE_" + name)
                             self.out += ("\t" * tabs) + "_OPAL_AUTOMATIC_TYPE_" + name + "=type(" + name + ")\n"
 
-                self.out += ("\t" * tabs) + names[0] + op + names[1] + "\n"
+                self.out += ("\t" * tabs) + names[0] + op + names[1].strip() + "\n"
 
                 if not nextUnchecked:
                     for name in varsSplitted:
+                        name = name.replace(" ", "")
                         if objNames[name] != "untyped":
                             testing = re.sub(r"\w*", "", name).replace(" ", "")
 
@@ -715,7 +722,7 @@ class Compiler:
                 for name in names[0]:
                     objNames[name] = "dynamic"
 
-                self.out += ("\t" * tabs) + left + op + names[1] + "\n"
+                self.out += ("\t" * tabs) + left + op + names[1].strip() + "\n"
 
                 continue
 
@@ -728,13 +735,16 @@ class Compiler:
                     self.out += ("\t" * tabs)
 
                     if objNames[variable] != "untyped":
-                        expr = expr.replace("++", " += 1").replace("--", " -= 1")
+                        expr = expr.replace("++", " += 1").replace("--", " -= 1").strip()
                         splitted = expr.split("=", maxsplit = 1)
+                        splitted[0] = splitted[0].replace(" ", "")
 
                         if not nextUnchecked:
                             testing = re.sub(r"\w*", "", splitted[0]).replace(" ", "")
                             if not (re.match(r"\[+", testing) or re.match(r"\]+", testing) or re.match(r"\.+", testing)):
                                 if len(splitted) != 1:
+                                    splitted[1] = splitted[1].strip()
+
                                     if objNames[variable] != "dynamic":
                                         if objNames[variable] != "auto":
                                             classVarTesting = objNames[variable].split("::", maxsplit = 1)
