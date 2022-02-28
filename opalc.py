@@ -33,11 +33,21 @@ class CompLoop:
     def __init__(self, comp):
         self.comp = comp
 
+class Macro:
+    def __init__(self, name, args = None):
+        self.name = name
+        self.args = args
+        self.code = ""
+
+    def addLine(self, line):
+        self.code += line
+
 class Compiler:
     def __init__(self):
         self.out = ""
         self.useIdentifiers = {}
 
+        self.macros = {}
         self.consts = {}
 
         self.hadError = False
@@ -46,6 +56,13 @@ class Compiler:
     def __error(self, msg):
         self.hadError = True
         print("error:", msg)
+
+    def __warning(self, msg, line):
+        print(f"warning (line {str(line + 1)}):", msg)
+
+    def __lineErr(self, msg, line):
+        self.hadError = True
+        print(f"error (line {str(line + 1)}):", msg)
 
     def __resetImports(self):
         self.imports = {
@@ -839,13 +856,17 @@ class Compiler:
     def __preCompiler(self, source):
         source = re.sub(r"\/\*[^/\*]+\*\/", "", source)
         result = ""
+        savingMacro = None
 
-        for line in source.split("\n"):
+        for i, line in enumerate(source.split("\n")):
             noSpaceLine = line.replace(" ", "")
             if noSpaceLine == "": continue
 
             if not noSpaceLine[0] in ("$", "#"):
-                result += line
+                if savingMacro is None:
+                    result += line
+                else: savingMacro.addLine(line)
+
                 continue
 
             if noSpaceLine[0] == "#":
@@ -856,12 +877,20 @@ class Compiler:
                 expr, _ = self.getUntilEnd(line, charPtr)
 
                 if re.match(r"\binclude\s+.+", expr):
+                    if savingMacro is not None:
+                        self.__warning("precompiler instruction (include) found inside macro definition. ignoring line", i)
+                        continue
+
                     fileDir, _ = self.getUntilEnd(expr, 8)
                     result += self.__preCompiler(self.readFile(self.getDir(fileDir)))
 
                     continue
 
                 if re.match(r"\bincludeDirectory\s+.+", expr):
+                    if savingMacro is not None:
+                        self.__warning("precompiler instruction (includeDirectory) found inside macro definition. ignoring line", i)
+                        continue
+
                     rawDir, _ = self.getUntilEnd(expr, 17)
                     fileDir = self.getDir(rawDir)
 
@@ -874,17 +903,93 @@ class Compiler:
                     continue
 
                 if re.match(r"\bdefine\s+.+", expr):
+                    if savingMacro is not None:
+                        self.__warning("precompiler instruction (define) found inside macro definition. ignoring line", i)
+                        continue
+
                     info, _ = self.getUntilEnd(expr, 7)
                     info = info.split(" ", maxsplit = 1)
                     self.consts[info[0]] = info[1]
 
                     continue
 
+                if re.match(r"\bmacro\s+.+", expr):
+                    if savingMacro is not None:
+                        self.__warning("precompiler instruction (macro) found inside macro definition. ignoring line", i)
+                        continue
+
+                    info, _ = self.getUntilEnd(expr, 6)
+                    info = info.replace(" ", "")
+
+                    if info[-1] == ")":
+                        name, charPtr = self.getUntil(expr, "(", 6)
+                        args, _ = self.getUntilEnd(expr, charPtr)
+
+                        name = name.replace(" ", "")
+                        args = args[:-1].replace(" ", "")
+
+                        if args != "": savingMacro = Macro(name, args)
+                        else:          savingMacro = Macro(name)
+                    else:
+                        savingMacro = Macro(info)
+
+                    continue
+
+                if re.match(r"\bend", expr):
+                    if savingMacro is None:
+                        self.__warning("end of macro found with no macro definition. ignoring line", i)
+                        continue
+
+                    if savingMacro.code == "":
+                        self.__warning(f'the "{savingMacro.name}" macro is being saved as empty', i)
+
+                    self.macros[savingMacro.name] = savingMacro
+                    savingMacro = None
+
+                    continue
+
+                if re.match(r"\bcall\s+.+", expr):
+                    if savingMacro is not None:
+                        self.__warning("precompiler instruction (call) found inside macro definition. ignoring line", i)
+                        continue
+
+                    info, _ = self.getUntilEnd(expr, 5)
+                    info = info.replace(" ", "")
+
+                    if info[-1] == ")":
+                        name, charPtr = self.getUntil(expr, "(", 5)
+                        args, _ = self.getUntilEnd(expr, charPtr)
+
+                        name = name.replace(" ", "")
+                        args = args[:-1].replace(" ", "")
+
+                        if name in self.macros:
+                            macro = self.macros[name]
+
+                            if args != "":
+                                result += "new dynamic " + macro.args + ";unchecked:" + macro.args + "=" + args + ";"
+                            result += macro.code
+                        else:
+                            self.__lineErr(f'trying to call undefined macro "{name}"', i)
+                            continue
+                    else:
+                        if info in self.macros:
+                            result += self.macros[info].code
+                        else:
+                            self.__lineErr(f'trying to call undefined macro "{info}"', i)
+                            continue
+
+                    continue
+
+                self.__warning("unknown or incomplete precompiler instruction. ignoring line", i)
+
         return self.replaceConsts(result)
 
     def compile(self, section):
         self.__resetImports()
         self.useIdentifiers = {}
+        self.macros = {}
+        self.consts = {}
         self.out = ""
         self.hadError = False
 
