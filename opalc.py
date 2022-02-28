@@ -87,6 +87,7 @@ class Compiler:
             charPtr += 1
 
             if charPtr >= len(section):
+                charPtr = len(section) - 2
                 self.__error('expecting character "' + ch + '"')
                 break
 
