@@ -967,7 +967,10 @@ class Compiler:
                             macro = self.macros[name]
 
                             if args != "":
-                                result += "new dynamic " + macro.args + ";unchecked:" + macro.args + "=" + args + ";"
+                                if macro.args != args:
+                                    result += "new dynamic " + macro.args + ";unchecked:" + macro.args + "=" + args + ";"
+                                else:
+                                    result += "new dynamic " + macro.args + ";"
                             result += macro.code
                         else:
                             self.__lineErr(f'trying to call undefined macro "{name}"', i)
