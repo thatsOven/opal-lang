@@ -112,16 +112,6 @@ class Compiler:
 
         return content, charPtr
 
-    def getUntilEnd(self, section, charPtr):
-        content = ""
-
-        while charPtr < len(section):
-            content += section[charPtr]
-            charPtr += 1
-        charPtr += 1
-
-        return content, charPtr
-
     def getBlock(self, section, openCh, closeCh, charPtr):
         blockStart = charPtr
         charPtr = self.getSameLevelParenthesis(section, openCh, closeCh, charPtr)
@@ -874,14 +864,14 @@ class Compiler:
 
             if noSpaceLine[0] == "$":
                 _, charPtr = self.getUntil(line, "$", 0)
-                expr, _ = self.getUntilEnd(line, charPtr)
+                expr = line[charPtr:]
 
                 if re.match(r"\binclude\s+.+", expr):
                     if savingMacro is not None:
                         self.__warning("precompiler instruction (include) found inside macro definition. ignoring line", i)
                         continue
 
-                    fileDir, _ = self.getUntilEnd(expr, 8)
+                    fileDir = expr[8:]
                     result += self.__preCompiler(self.readFile(self.getDir(fileDir)))
 
                     continue
@@ -891,7 +881,7 @@ class Compiler:
                         self.__warning("precompiler instruction (includeDirectory) found inside macro definition. ignoring line", i)
                         continue
 
-                    rawDir, _ = self.getUntilEnd(expr, 17)
+                    rawDir = expr[17:]
                     fileDir = self.getDir(rawDir)
 
                     included = ""
@@ -907,7 +897,7 @@ class Compiler:
                         self.__warning("precompiler instruction (define) found inside macro definition. ignoring line", i)
                         continue
 
-                    info, _ = self.getUntilEnd(expr, 7)
+                    info = expr[7:]
                     info = info.split(" ", maxsplit = 1)
                     self.consts[info[0]] = info[1]
 
@@ -918,12 +908,11 @@ class Compiler:
                         self.__warning("precompiler instruction (macro) found inside macro definition. ignoring line", i)
                         continue
 
-                    info, _ = self.getUntilEnd(expr, 6)
-                    info = info.replace(" ", "")
+                    info = expr[6:].replace(" ", "")
 
                     if info[-1] == ")":
                         name, charPtr = self.getUntil(expr, "(", 6)
-                        args, _ = self.getUntilEnd(expr, charPtr)
+                        args = expr[charPtr:]
 
                         name = name.replace(" ", "")
                         args = args[:-1].replace(" ", "")
@@ -953,12 +942,11 @@ class Compiler:
                         self.__warning("precompiler instruction (call) found inside macro definition. ignoring line", i)
                         continue
 
-                    info, _ = self.getUntilEnd(expr, 5)
-                    info = info.replace(" ", "")
+                    info = expr[5:].replace(" ", "")
 
                     if info[-1] == ")":
                         name, charPtr = self.getUntil(expr, "(", 5)
-                        args, _ = self.getUntilEnd(expr, charPtr)
+                        args = expr[charPtr:]
 
                         name = name.replace(" ", "")
                         args = args[:-1].replace(" ", "")
