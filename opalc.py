@@ -704,7 +704,7 @@ class Compiler:
                 if self.out[-1] == ",":
                     self.out = self.out[:-1]
 
-                self.out += "=range(" + str(len(variables)) + ")\n"
+                self.out += ("\t" * tabs) + "=range(" + str(len(variables)) + ")\n"
 
                 for varName in variables:
                     splitted = varName.split("=", maxsplit = 1)
