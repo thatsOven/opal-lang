@@ -697,10 +697,11 @@ class Compiler:
                     inTabs = tabs + 1
                     self.out += ("\t" * tabs) + "class " + name + ":\n" + ("\t" * inTabs)
                 else: inTabs = tabs
-
+                
+                self.out += "\t" * tabs
                 for varName in names:
                     self.out += varName + ","
-
+                
                 if self.out[-1] == ",":
                     self.out = self.out[:-1]
 
