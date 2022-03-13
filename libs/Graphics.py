@@ -277,15 +277,17 @@ class Graphics:
         if font is None:
             font = self.font
 
+        cPos = pos.copy()
+
         s = font.render(text, True, color)
         r = s.get_rect()
 
         if centerX:
-            pos.x -= r.width // 2
+            cPos.x -= r.width // 2
         if centerY:
-            pos.y -= r.height // 2
+            cPos.y -= r.height // 2
 
-        self.screen.blit(s, (pos + self.center).toList(2))
+        self.screen.blit(s, (cPos + self.center).toList(2))
 
 
     def drawText(self, text : list, pos : Vector, shadow = False, color = (255, 255, 255), shadowOffset = 4, font = None):
