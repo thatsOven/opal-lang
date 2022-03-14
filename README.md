@@ -9,6 +9,8 @@ NOTE: It doesn't work perfectly, it still has some problems.
 * To compile to a `.pyc` file: `opalc.py compile input_file [output_file]`
 * To directly run opal source: `opalc.py file_name`
 
+add `--dynamic` to the arguments to ignore types in the compiled result (results in better performance)
+
 # Hello World!
 ```
 package opal: import *;
