@@ -50,7 +50,8 @@ class Compiler:
         self.macros = {}
         self.consts = {}
 
-        self.hadError = False
+        self.hadError  = False
+        self.asDynamic = False
         self.__resetImports()
 
     def __error(self, msg):
@@ -71,7 +72,9 @@ class Compiler:
         }
 
     def newObj(self, objNames, name, type_):
-        objNames[name] = type_
+        if self.asDynamic and type_ != "untyped":
+            objNames[name] = "dynamic"
+        else: objNames[name] = type_
 
     def newIdentifier(self, name, as_):
         self.useIdentifiers[name] = as_
@@ -697,11 +700,11 @@ class Compiler:
                     inTabs = tabs + 1
                     self.out += ("\t" * tabs) + "class " + name + ":\n" + ("\t" * inTabs)
                 else: inTabs = tabs
-                
+
                 self.out += "\t" * tabs
                 for varName in names:
                     self.out += varName + ","
-                
+
                 if self.out[-1] == ",":
                     self.out = self.out[:-1]
 
@@ -983,9 +986,10 @@ class Compiler:
         self.macros = {}
         self.consts = {}
         self.out = ""
-        self.hadError = False
+        self.hadError  = False
 
         self.__compiler(self.__preCompiler(section).replace("\t", "").replace("\n", ""), {}, 0, None)
+        self.asDynamic = False
 
         if self.hadError: return ""
         else: return self.out
@@ -1006,9 +1010,13 @@ if __name__ == "__main__":
     else:
         compiler = Compiler()
 
+        if "--dynamic" in sys.argv:
+            compiler.asDynamic = True
+            sys.argv.remove("--dynamic")
+
         if sys.argv[1] == "pycompile":
             if len(sys.argv) == 2:
-                print('opal compiler: input file required for command "pycompile"')
+                print('input file required for command "pycompile"')
                 sys.exit(1)
 
             time = default_timer()
@@ -1022,7 +1030,7 @@ if __name__ == "__main__":
 
         elif sys.argv[1] == "compile":
             if len(sys.argv) == 2:
-                print('opal compiler: input file required for command "compile"')
+                print('input file required for command "compile"')
                 sys.exit(1)
 
             time = default_timer()
@@ -1037,7 +1045,7 @@ if __name__ == "__main__":
                 print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
         else:
             if not os.path.exists(sys.argv[1]):
-                print('opal compiler: unknown command or nonexistent file "' + sys.argv[1] + '"')
+                print('unknown command or nonexistent file "' + sys.argv[1] + '"')
                 sys.exit(1)
 
             result = compiler.compileFile(sys.argv[1])
