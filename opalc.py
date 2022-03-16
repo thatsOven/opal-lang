@@ -23,7 +23,8 @@ SOFTWARE.
 """
 
 import re, os, sys, py_compile, importlib
-from timeit import default_timer
+from timeit  import default_timer
+from pathlib import Path
 
 OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "=")
 
@@ -984,7 +985,6 @@ class Compiler:
         self.__resetImports()
         self.useIdentifiers = {}
         self.macros = {}
-        self.consts = {}
         self.out = ""
         self.hadError  = False
 
@@ -998,15 +998,18 @@ class Compiler:
         return self.compile(self.readFile(fileIn))
 
     def compileToPY(self, fileIn, fileOut):
-        result = self.compile(self.readFile(fileIn))
+        result = self.compileFile(fileIn)
 
         if result != "":
             with open(fileOut, "w") as txt:
                 txt.write(result)
 
+def getHomeDirFromFile(file):
+    return str(Path(file).parent.absolute())
+
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v0.1 - thatsOven")
+        print("opal compiler v2022.3.16 - thatsOven")
     else:
         compiler = Compiler()
 
@@ -1014,12 +1017,24 @@ if __name__ == "__main__":
             compiler.asDynamic = True
             sys.argv.remove("--dynamic")
 
+        if "--dir" in sys.argv:
+            findDir = False
+            idx = sys.argv.index("--dir")
+            sys.argv.pop(idx)
+            compiler.consts["HOME_DIR"] = sys.argv.pop(idx)
+        else:
+            findDir = True
+
         if sys.argv[1] == "pycompile":
             if len(sys.argv) == 2:
                 print('input file required for command "pycompile"')
                 sys.exit(1)
 
             time = default_timer()
+
+            if findDir:
+                compiler.consts["HOME_DIR"] = getHomeDirFromFile(sys.argv[2])
+
             if len(sys.argv) == 3:
                 compiler.compileToPY(sys.argv[2], "output.py")
             else:
@@ -1034,6 +1049,10 @@ if __name__ == "__main__":
                 sys.exit(1)
 
             time = default_timer()
+
+            if findDir:
+                compiler.consts["HOME_DIR"] = getHomeDirFromFile(sys.argv[2])
+
             compiler.compileToPY(sys.argv[2], "tmp.py")
 
             if not compiler.hadError:
@@ -1047,6 +1066,9 @@ if __name__ == "__main__":
             if not os.path.exists(sys.argv[1]):
                 print('unknown command or nonexistent file "' + sys.argv[1] + '"')
                 sys.exit(1)
+
+            if findDir:
+                compiler.consts["HOME_DIR"] = getHomeDirFromFile(sys.argv[1])
 
             result = compiler.compileFile(sys.argv[1])
             if not compiler.hadError: exec(result)
