@@ -34,6 +34,7 @@ class Queue:
         return self.__array.pop(0)
 
     def look(self):
+        if len(self.__array) == 0: return None
         return self.__array[0]
 
     def isEmpty(self):
