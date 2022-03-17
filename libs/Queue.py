@@ -31,10 +31,10 @@ class Queue:
 
     def pop(self):
         if len(self.__array) == 0: return None
-        return self.__array.pop(-1)
+        return self.__array.pop(0)
 
     def look(self):
-        return self.__array[-1]
+        return self.__array[0]
 
     def isEmpty(self):
         return len(self.__array) == 0
