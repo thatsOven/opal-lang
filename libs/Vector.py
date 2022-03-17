@@ -37,13 +37,13 @@ class Vector:
         del self.x
         del self.y
         del self.z
-    
+
     def copy(self):
         return Vector(self.x, self.y, self.z)
 
     def distance(a, b):
         return math.sqrt(((b.x - a.x) ** 2) + ((b.y - a.y) ** 2) + ((b.z - a.z) ** 2))
-        
+
     def heading(self):
         return math.atan2(self.y, self.x)
 
@@ -55,10 +55,10 @@ class Vector:
         )
 
     def dot(a, b):
-        a.normalize()
-        b.normalize()
-        
-        vals = (a * b).toList(3)
+        tmpA = a.copy().normalize()
+        tmpB = b.copy().normalize()
+
+        vals = (tmpA * tmpB).toList(3)
         sum_ = 0
 
         for val in vals:
@@ -71,7 +71,7 @@ class Vector:
             return math.sqrt((self.x ** 2) + (self.y ** 2) + (self.z ** 2))
         else:
             self.normalize()
-            
+
             self.x *= value
             self.y *= value
             self.z *= value
@@ -126,7 +126,7 @@ class Vector:
 
     def __abs__(self):
         return Vector(abs(self.x), abs(self.y), abs(self.z))
-    
+
     def __iter__(self):
         return iter([self.x, self.y, self.z])
 
@@ -220,7 +220,7 @@ class Vector:
     def __le__(self, other):
         if type(self) != type(other): return False
         return self.x <= other.x and self.y <= other.y and self.z <= other.z
-    
+
     def __gt__(self, other):
         if type(self) != type(other): return False
         return self.x > other.x and self.y > other.y and self.z > other.z

@@ -27,7 +27,7 @@ from libs.sort     import sort
 from libs.fastSort import fastSort
 
 class Array:
-    def __init__(self, capacity, arrayType=dynamic, contents=None):
+    def __init__(self, capacity, arrayType = dynamic, contents = None):
         self._capacity = capacity
         self._arrayType = arrayType
         if contents is None:

@@ -23,18 +23,18 @@ SOFTWARE.
 """
 
 endl = "\n"
-    
+
 def out(*messages):
     for message in messages:
-        print(message, end="", flush=True)
+        print(message, end = "", flush = True)
 
-def read(message=""):
+def read(message = ""):
     return input(message)
 
-def justifyString(message, length, left=True, fill=" "):
+def justifyString(message, length, left = True, fill = " "):
     if len(message) > length:
         raise Exception("Length of string is greater than defined length")
-    
+
     if left:
         return fill * (length - len(message)) + message
     else:
@@ -43,7 +43,7 @@ def justifyString(message, length, left=True, fill=" "):
 def tolerance(value, tol):
     return range(round(value - tol), round(value + tol))
 
-def limitToRange(variable, min_, max_, pacman=False, returnChanged=False):
+def limitToRange(variable, min_, max_, pacman = False, returnChanged = False):
     if variable < min_:
         if returnChanged:
             return (max_ if pacman else min_), True
@@ -58,7 +58,7 @@ def limitToRange(variable, min_, max_, pacman=False, returnChanged=False):
         return variable, False
     else:
         return variable
-        
+
 def swap(a, b):
     return b, a
 
@@ -70,22 +70,22 @@ def arraySwap(array, a, b):
 
 def multiSwapRight(array, a, b, len):
     for i in range(0, len):
-        arraySwap(array, a+i, b+i)
+        arraySwap(array, a + i, b + i)
 
 def multiSwapLeft(array, a, b, len):
     for i in range(0, len):
-        arraySwap(array, a+len-i-1, b+len-i-1)
+        arraySwap(array, a + len - i - 1, b + len - i - 1)
 
 def insertToLeft(array, _from, to):
     temp = array[_from]
-    for i in range(_from-1, to-1, -1):
-        array[i+1] = array[i]
+    for i in range(_from - 1, to - 1, -1):
+        array[i + 1] = array[i]
     array[to] = temp
 
 def insertToRight(array, _from, to):
     temp = array[_from]
     for i in range(_from, to):
-        array[i] = array[i+1]
+        array[i] = array[i + 1]
     array[to] = temp
 
 def rotate(array, start, split, end):
@@ -96,9 +96,9 @@ def rotate(array, start, split, end):
         else:
             multiSwapLeft(array, start, end - (split - start), split - start)
             end   -= split - start
-            
+
     if     end - split == 1: insertToLeft(array, split, start)
-    elif split - start == 1: insertToRight(array, start, end-1)
+    elif split - start == 1: insertToRight(array, start, end - 1)
 
 def rotateOOP(array, a, m, b):
     if b - m == m - a:
@@ -112,29 +112,29 @@ def rotateOOP(array, a, m, b):
     for i in range(a, b):
         array[i] = aux[i - a]
 
-def lrBinarySearch(array, value, start=0, end=None, left=True, comparefn=compare):
+def lrBinarySearch(array, value, start = 0, end = None, left = True, comparefn = compare):
     if end is None: end = len(array)
 
     a = start
     b = end
     while a < b:
         m = a + ((b - a) // 2)
-        
+
         cmp = comparefn(value, array[m])
-        if cmp <= 0 if left else cmp < 0: 
+        if cmp <= 0 if left else cmp < 0:
             b = m
         else: a = m+1
 
     return a
 
-def binarySearch(array, value, start=0, end=None, comparefn=compare):
+def binarySearch(array, value, start = 0, end = None, comparefn = compare):
     if end is None: end = len(array)
 
     a = start
     b = end
     while a < b:
         m = a + ((b - a) // 2)
-        
+
         cmp = comparefn(value, array[m])
         if cmp == 0: return m
 
@@ -143,7 +143,7 @@ def binarySearch(array, value, start=0, end=None, comparefn=compare):
 
     return -1
 
-def linearSearch(array, value, start=0, end=None, getVal = lambda x : x):
+def linearSearch(array, value, start = 0, end = None, getVal = lambda x : x):
     if end is None: end = len(array)
 
     for i in range(start, end):
@@ -151,7 +151,7 @@ def linearSearch(array, value, start=0, end=None, getVal = lambda x : x):
             return i
 
     return -1
-    
+
 def reverse(array, start, end):
     end -= 1
     while start < end:
