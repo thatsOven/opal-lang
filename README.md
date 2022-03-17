@@ -9,7 +9,7 @@ NOTE: It doesn't work perfectly, it still has some problems.
 * To compile to a `.pyc` file: `opalc.py compile input_file [output_file]`
 * To directly run opal source: `opalc.py file_name`
 
-add `--dynamic` to the arguments to ignore types in the compiled result (results in better performance)
+add `--dynamic` to the arguments to ignore types in the compiled result (results in better performance but can break some programs)
 
 if you are running Windows on your machine, and you'd like to double click on opal source to directly run it:
 
