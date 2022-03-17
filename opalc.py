@@ -1005,11 +1005,11 @@ class Compiler:
                 txt.write(result)
 
 def getHomeDirFromFile(file):
-    return str(Path(file).parent.absolute())
+    return str(Path(file).parent.absolute()).replace("\\", "\\\\")
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2022.3.16 - thatsOven")
+        print("opal compiler v2022.3.17 - thatsOven")
     else:
         compiler = Compiler()
 
