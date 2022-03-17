@@ -13,8 +13,8 @@ add `--dynamic` to the arguments to ignore types in the compiled result (results
 
 if you are running Windows on your machine, and you'd like to double click on opal source to directly run it:
 
-1) add the opal folder to PATH
-2) set run.bat as the default way of opening .opal files
+1) add the opal folder to `PATH`
+2) set `run.bat` as the default way of opening `.opal` files
 
 # Hello World!
 ```
