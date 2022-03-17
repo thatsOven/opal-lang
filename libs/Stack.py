@@ -34,7 +34,7 @@ class Stack:
         return self.__array.pop()
 
     def look(self):
-        return self.__array[0]
+        return self.__array[-1]
 
     def isEmpty(self):
         return len(self.__array) == 0
