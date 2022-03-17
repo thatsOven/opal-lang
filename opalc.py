@@ -1005,7 +1005,7 @@ class Compiler:
                 txt.write(result)
 
 def getHomeDirFromFile(file):
-    return str(Path(file).parent.absolute()).replace("\\", "\\\\")
+    return str(Path(file).parent.absolute()).replace("\\", "\\\\\\\\")
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
