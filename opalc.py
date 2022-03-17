@@ -1021,7 +1021,7 @@ if __name__ == "__main__":
             findDir = False
             idx = sys.argv.index("--dir")
             sys.argv.pop(idx)
-            compiler.consts["HOME_DIR"] = sys.argv.pop(idx)
+            compiler.consts["HOME_DIR"] = sys.argv.pop(idx).replace("\\", "\\\\")
         else:
             findDir = True
 
@@ -1036,9 +1036,9 @@ if __name__ == "__main__":
                 compiler.consts["HOME_DIR"] = getHomeDirFromFile(sys.argv[2])
 
             if len(sys.argv) == 3:
-                compiler.compileToPY(sys.argv[2], "output.py")
+                compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), "output.py")
             else:
-                compiler.compileToPY(sys.argv[2], sys.argv[3])
+                compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), sys.argv[3].replace("\\", "\\\\"))
 
             if not compiler.hadError:
                 print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
@@ -1053,16 +1053,17 @@ if __name__ == "__main__":
             if findDir:
                 compiler.consts["HOME_DIR"] = getHomeDirFromFile(sys.argv[2])
 
-            compiler.compileToPY(sys.argv[2], "tmp.py")
+            compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), "tmp.py")
 
             if not compiler.hadError:
                 if len(sys.argv) == 3:
                     py_compile.compile("tmp.py", "output.pyc")
                 else:
-                    py_compile.compile("tmp.py", sys.argv[3])
+                    py_compile.compile("tmp.py", sys.argv[3].replace("\\", "\\\\"))
                 os.remove("tmp.py")
                 print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
         else:
+            sys.argv[1] = sys.argv[1].replace("\\", "\\\\")
             if not os.path.exists(sys.argv[1]):
                 print('unknown command or nonexistent file "' + sys.argv[1] + '"')
                 sys.exit(1)
