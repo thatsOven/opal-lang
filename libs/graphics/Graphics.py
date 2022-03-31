@@ -76,7 +76,7 @@ class Graphics:
         pygame.font.init()
         pygame.mixer.init(frequencySample, size=-16, channels=1)
 
-        self.setIcon(
+        pygame.display.set_icon(
             pygame.image.load(
                 os.path.join(str(Path(__file__).parent.absolute()), "icon.png")
             )
