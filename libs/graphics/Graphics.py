@@ -27,6 +27,7 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame, numpy
 from libs.sort   import sort
 from libs.Vector import Vector
+from pathlib     import Path
 
 __circle_cache = {}
 def __circlepoints(r):
@@ -74,6 +75,12 @@ class Graphics:
         pygame.init()
         pygame.font.init()
         pygame.mixer.init(frequencySample, size=-16, channels=1)
+
+        self.setIcon(
+            pygame.image.load(
+                os.path.join(str(Path(__file__).parent.absolute()), "icon.png")
+            )
+        )
 
         self.frequencySample = frequencySample
 
@@ -226,6 +233,9 @@ class Graphics:
         if resolution is not None:
             img = pygame.transform.scale(img, resolution.toList(2))
         return img
+
+    def setIcon(self, surf):
+        pygame.display.set_icon(pygame.transform.scale(surf, (32, 32)))
 
     def blitSurf(self, surf, position):
         self.screen.blit(surf, (position + self.center).toList(2))

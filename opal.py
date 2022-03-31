@@ -65,7 +65,8 @@ from libs.Array    import Array
 from libs.Stack    import Stack
 from libs.Vector   import Vector
 from libs.char     import char
-from libs.Graphics import Graphics
 from libs.Queue    import Queue
+
+from libs.graphics.Graphics import Graphics
 
 from pygame.locals import *
