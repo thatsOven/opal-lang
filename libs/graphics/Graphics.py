@@ -82,6 +82,8 @@ class Graphics:
             )
         )
 
+        pygame.display.set_caption(caption)
+
         self.frequencySample = frequencySample
 
         self.resolution = resolution
@@ -95,8 +97,6 @@ class Graphics:
 
         self.caption = caption
         self.backgroundColor = backgroundColor
-
-        pygame.display.set_caption(caption)
 
         self.center       = translated
         self.framerate    = framerate
