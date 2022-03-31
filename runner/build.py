@@ -7,6 +7,14 @@ from os                   import chdir, path, getcwd, remove
 spath = str(Path(__file__).parent.absolute())
 chdir(spath)
 
+with open("run.py", "w") as script:
+    script.write("from subprocess import run\nfrom sys import argv\n")
+    chdir("..")
+    p = path.join(getcwd(), 'opalc.py').replace("\\", "\\\\")
+    script.write(f"run(['python', '{p}'] + argv[1:])")
+
+chdir(spath)
+
 run((
     "--onefile",
     "--icon=icon.ico",
@@ -19,6 +27,7 @@ run((
 rmtree("tmp")
 rmtree("__pycache__")
 remove("run.spec")
+remove("run.py")
 
 chdir("..")
 copy_tree(path.join(spath, "run"), getcwd())
