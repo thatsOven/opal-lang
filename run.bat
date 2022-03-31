@@ -1,2 +1,0 @@
-@echo off
-opalc.py %*
