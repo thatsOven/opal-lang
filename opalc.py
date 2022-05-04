@@ -199,7 +199,8 @@ class Compiler:
             re.match(r"\bclass ",          section) or
             re.match(r"\bstaticmethod ",   section) or
             re.match(r"\bclassmethod ",    section) or
-            re.match(r"\bmethod ",         section)
+            re.match(r"\bmethod ",         section) or
+            re.match(r"\brecord ",         section)
             )
 
     def __compiler(self, section, objNames, tabs, loop):
@@ -217,6 +218,7 @@ class Compiler:
                 charPtr += 4
                 if self.__isBlockNew(section[charPtr:]):
                     hasThis = False
+                    isRecord = False
                     if re.match(r"\bfunction ", section[charPtr:]):
                         translates = "def"
                         charPtr += 9
@@ -231,19 +233,22 @@ class Compiler:
                         translates = "def"
                         charPtr += 7
                         hasThis = True
+                    elif re.match(r"\brecord ", section[charPtr:]):
+                        translates = "class"
+                        charPtr += 7
+                        isRecord = True
                     else:
                         translates = "class"
                         charPtr += 6
 
-                    if translates != "class":
+                    if translates != "class" or isRecord:
                         name, charPtr = self.getUntil(section, "(", charPtr)
                         name = name.replace(" ", "")
 
-                        self.newObj(objNames, name, "untyped")
+                        if isRecord: self.newObj(objNames, name, "class")
+                        else:        self.newObj(objNames, name, "untyped")
 
                         args, charPtr = self.getBlock(section, "(", ")", charPtr)
-                        charPtr += 1
-
                         args = args.strip()
 
                         if hasThis:
@@ -264,7 +269,20 @@ class Compiler:
                             if fparam != "":
                                 params.append(fparam.split("=", maxsplit = 1)[0])
 
-                        _, charPtr = self.getUntil(section, "{", charPtr)
+                        if isRecord:
+                            _, charPtr = self.getUntil(section, ";", charPtr)
+
+                            self.out += (
+                                ("\t" * tabs) + "class " + name + ":\n" +
+                                ("\t" * (tabs + 1)) + "def __init__(this," + args + "):\n"
+                            )
+
+                            for p in params:
+                                self.out += ("\t" * (tabs + 2)) + "this." + p + "=" + p + "\n"
+
+                            continue
+                        else:
+                            _, charPtr = self.getUntil(section, "{", charPtr)
                     else:
                         info, charPtr = self.getUntil(section, "{", charPtr)
                         info = info.split(":", maxsplit = 1)
@@ -348,6 +366,24 @@ class Compiler:
                                 self.out += ("\t" * tabs) + name + "=" + internalInfo[1] + "\n"
 
                     continue
+
+            if re.match(r"\bnamespace ", section[charPtr:]):
+                charPtr += 10
+                name, charPtr = self.getUntil(section, "{", charPtr)
+                name = name.replace(" ", "")
+
+                self.newObj(objNames, name, "class")
+
+                block, charPtr = self.getBlock(section, "{", "}", charPtr)
+
+                if block.replace(" ", "") == "":
+                    self.out += ("\t" * tabs) + "class " + name + ":pass\n"
+                    continue
+                else:
+                    self.out += ("\t" * tabs) + "class " + name + ":\n"
+
+                    self.__compiler(block, objNames, tabs + 1, loop)
+                    return self.__compiler(section[charPtr:], objNames, tabs, loop)
 
             if re.match(r"\bimport ", section[charPtr:]):
                 charPtr += 7
@@ -1009,7 +1045,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2022.3.17 - thatsOven")
+        print("opal compiler v2022.5.4 - thatsOven")
     else:
         compiler = Compiler()
 
