@@ -245,9 +245,6 @@ class Compiler:
                         name, charPtr = self.getUntil(section, "(", charPtr)
                         name = name.replace(" ", "")
 
-                        if isRecord: self.newObj(objNames, name, "class")
-                        else:        self.newObj(objNames, name, "untyped")
-
                         args, charPtr = self.getBlock(section, "(", ")", charPtr)
                         args = args.strip()
 
@@ -270,6 +267,8 @@ class Compiler:
                                 params.append(fparam.split("=", maxsplit = 1)[0])
 
                         if isRecord:
+                            self.newObj(objNames, name, "class")
+
                             _, charPtr = self.getUntil(section, ";", charPtr)
 
                             self.out += (
@@ -282,6 +281,8 @@ class Compiler:
 
                             continue
                         else:
+                            self.newObj(objNames, name, "untyped")
+
                             _, charPtr = self.getUntil(section, "{", charPtr)
                     else:
                         info, charPtr = self.getUntil(section, "{", charPtr)
