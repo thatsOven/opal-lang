@@ -50,6 +50,7 @@ class Compiler:
 
         self.macros = {}
         self.consts = {}
+        self.preConsts = {}
 
         self.hadError  = False
         self.asDynamic = False
@@ -918,13 +919,13 @@ class Compiler:
 
         return objNames
 
-    def replaceConsts(self, expr):
-        for const in self.consts:
-            expr = re.sub(rf"{const}", str(self.consts[const]), expr)
+    def replaceConsts(self, expr, consts):
+        for const in consts:
+            expr = re.sub(rf"{const}", str(consts[const]), expr)
         return expr
 
     def getDir(self, expr):
-        return eval(self.replaceConsts(expr))
+        return eval(self.replaceConsts(expr, self.preConsts | self.consts))
 
     def readFile(self, fileName):
         content = ""
@@ -954,7 +955,7 @@ class Compiler:
 
             if noSpaceLine[0] == "$":
                 _, charPtr = self.getUntil(line, "$", 0)
-                expr = line[charPtr:]
+                expr = self.replaceConsts(line[charPtr:], self.preConsts)
 
                 if re.match(r"\binclude\s+.+", expr):
                     if savingMacro is not None:
@@ -990,6 +991,17 @@ class Compiler:
                     info = expr[7:]
                     info = info.split(" ", maxsplit = 1)
                     self.consts[info[0]] = info[1]
+
+                    continue
+
+                if re.match(r"\bpdefine\s+.+", expr):
+                    if savingMacro is not None:
+                        self.__warning("precompiler instruction (pdefine) found inside macro definition. ignoring line", i)
+                        continue
+
+                    info = expr[8:]
+                    info = info.split(" ", maxsplit = 1)
+                    self.preConsts[info[0]] = info[1]
 
                     continue
 
@@ -1064,7 +1076,7 @@ class Compiler:
 
                 self.__warning("unknown or incomplete precompiler instruction. ignoring line", i)
 
-        return self.replaceConsts(result)
+        return self.replaceConsts(result, self.consts)
 
     def compile(self, section):
         self.__resetImports()
@@ -1075,15 +1087,18 @@ class Compiler:
 
         self.__compiler(self.__preCompiler(section).replace("\t", "").replace("\n", ""), {}, 0, None)
         self.asDynamic = False
+        
+        self.consts = {}
+        self.preConsts = {}
 
         if self.hadError: return ""
         else: return self.out
 
-    def compileFile(self, fileIn):
-        return self.compile(self.readFile(fileIn))
+    def compileFile(self, fileIn, top = ""):
+        return self.compile(top + "\n" + self.readFile(fileIn))
 
-    def compileToPY(self, fileIn, fileOut):
-        result = self.compileFile(fileIn)
+    def compileToPY(self, fileIn, fileOut, top = ""):
+        result = self.compileFile(fileIn, top)
 
         if result != "":
             with open(fileOut, "w") as txt:
@@ -1094,7 +1109,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2022.5.4 - thatsOven")
+        print("opal compiler v2022.5.28 - thatsOven")
     else:
         compiler = Compiler()
 
@@ -1106,7 +1121,10 @@ if __name__ == "__main__":
             findDir = False
             idx = sys.argv.index("--dir")
             sys.argv.pop(idx)
-            compiler.consts["HOME_DIR"] = sys.argv.pop(idx).replace("\\", "\\\\")
+
+            drt = sys.argv.pop(idx).replace("\\", "\\\\")
+            compiler.preConsts["HOME_DIR"] = drt
+            top = 'new dynamic HOME_DIR="' + drt + '";'
         else:
             findDir = True
 
@@ -1118,12 +1136,14 @@ if __name__ == "__main__":
             time = default_timer()
 
             if findDir:
-                compiler.consts["HOME_DIR"] = getHomeDirFromFile(sys.argv[2])
+                drt = getHomeDirFromFile(sys.argv[2])
+                compiler.preConsts["HOME_DIR"] = drt
+                top = 'new dynamic HOME_DIR="' + drt + '";'
 
             if len(sys.argv) == 3:
-                compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), "output.py")
+                compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), "output.py", top)
             else:
-                compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), sys.argv[3].replace("\\", "\\\\"))
+                compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), sys.argv[3].replace("\\", "\\\\"), top)
 
             if not compiler.hadError:
                 print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
@@ -1136,9 +1156,11 @@ if __name__ == "__main__":
             time = default_timer()
 
             if findDir:
-                compiler.consts["HOME_DIR"] = getHomeDirFromFile(sys.argv[2])
+                drt = getHomeDirFromFile(sys.argv[2])
+                compiler.preConsts["HOME_DIR"] = drt
+                top = 'new dynamic HOME_DIR="' + drt + '";'
 
-            compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), "tmp.py")
+            compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), "tmp.py", top)
 
             if not compiler.hadError:
                 if len(sys.argv) == 3:
@@ -1154,7 +1176,9 @@ if __name__ == "__main__":
                 sys.exit(1)
 
             if findDir:
-                compiler.consts["HOME_DIR"] = getHomeDirFromFile(sys.argv[1])
+                drt = getHomeDirFromFile(sys.argv[1])
+                compiler.preConsts["HOME_DIR"] = drt
+                top = 'new dynamic HOME_DIR="' + drt + '";'
 
-            result = compiler.compileFile(sys.argv[1])
+            result = compiler.compileFile(sys.argv[1], top)
             if not compiler.hadError: exec(result)
