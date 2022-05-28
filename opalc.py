@@ -221,6 +221,7 @@ class Compiler:
                 if self.__isBlockNew(section[charPtr:]):
                     hasThis = False
                     isRecord = False
+                    isAbstract = False
                     if re.match(r"\bfunction ", section[charPtr:]):
                         translates = "def"
                         charPtr += 9
@@ -239,6 +240,7 @@ class Compiler:
                         translates = "@abstractmethod\n" + ("\t" * tabs) + "def"
                         charPtr += 15
                         hasThis = True
+                        isAbstract = True
                     elif re.match(r"\bmethod ", section[charPtr:]):
                         translates = "def"
                         charPtr += 7
@@ -276,7 +278,14 @@ class Compiler:
                             if fparam != "":
                                 params.append(fparam.split("=", maxsplit = 1)[0])
 
-                        if isRecord:
+                        if isAbstract:
+                            self.newObj(objNames, name, "untyped")
+                            _, charPtr = self.getUntil(section, ";", charPtr)
+
+                            self.out += ("\t" * tabs) + translates + " " + name + "(" + args + "):pass\n"
+
+                            continue
+                        elif isRecord:
                             self.newObj(objNames, name, "class")
 
                             _, charPtr = self.getUntil(section, ";", charPtr)
