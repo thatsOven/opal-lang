@@ -70,7 +70,7 @@ class Compiler:
         self.imports = {
             "OPAL_ASSERT_CLASSVAR": False,
             "asyncio": False,
-            "abstractmethod": False
+            "abstract": False
         }
 
     def newObj(self, objNames, name, type_):
@@ -200,7 +200,6 @@ class Compiler:
             re.match(r"\bclass ",          section) or
             re.match(r"\bstaticmethod ",   section) or
             re.match(r"\bclassmethod ",    section) or
-            re.match(r"\babstractmethod ", section) or
             re.match(r"\bmethod ",         section) or
             re.match(r"\brecord ",         section)
             )
@@ -209,6 +208,7 @@ class Compiler:
         charPtr = 0
         lastPkg = ""
         nextUnchecked = False
+        nextAbstract = False
 
         while charPtr < len(section):
             while section[charPtr] == " ":
@@ -221,31 +221,41 @@ class Compiler:
                 if self.__isBlockNew(section[charPtr:]):
                     hasThis = False
                     isRecord = False
-                    isAbstract = False
                     if re.match(r"\bfunction ", section[charPtr:]):
                         translates = "def"
                         charPtr += 9
                     elif re.match(r"\bstaticmethod ", section[charPtr:]):
-                        translates = "@staticmethod\n" + ("\t" * tabs) + "def"
+                        translates = "@staticmethod\n"
+
+                        if nextAbstract:
+                            translates += ("\t" * tabs) + "@abstractmethod\n"
+
+                        translates += ("\t" * tabs) + "def"
+
                         charPtr += 13
                     elif re.match(r"\bclassmethod ", section[charPtr:]):
-                        translates = "@classmethod\n" + ("\t" * tabs) + "def"
+                        translates = "@classmethod\n"
+
+                        if nextAbstract:
+                            translates += ("\t" * tabs) + "@abstractmethod\n"
+
+                        translates += ("\t" * tabs) + "def"
+
                         charPtr += 12
                         hasThis = True
-                    elif re.match(r"\babstractmethod ", section[charPtr:]):
-                        if not self.imports["abstractmethod"]:
-                            self.imports["abstractmethod"] = True
-                            self.out = "from abc import abstractmethod\n" + self.out
-
-                        translates = "@abstractmethod\n" + ("\t" * tabs) + "def"
-                        charPtr += 15
-                        hasThis = True
-                        isAbstract = True
                     elif re.match(r"\bmethod ", section[charPtr:]):
-                        translates = "def"
+                        if nextAbstract:
+                            translates = "@abstractmethod\n" + ("\t" * tabs) + "def"
+                        else:
+                            translates = "def"
+                        
                         charPtr += 7
                         hasThis = True
                     elif re.match(r"\brecord ", section[charPtr:]):
+                        if nextAbstract:
+                            self.__error("cannot create abstract record")
+                            continue
+
                         translates = "class"
                         charPtr += 7
                         isRecord = True
@@ -278,7 +288,9 @@ class Compiler:
                             if fparam != "":
                                 params.append(fparam.split("=", maxsplit = 1)[0])
 
-                        if isAbstract:
+                        if nextAbstract:
+                            nextAbstract = False
+
                             self.newObj(objNames, name, "untyped")
                             _, charPtr = self.getUntil(section, ";", charPtr)
 
@@ -310,8 +322,16 @@ class Compiler:
 
                         if len(info) == 2:
                             args = info[1].replace(" ", "")
+
+                            if nextAbstract:
+                                nextAbstract = False
+                                args += ",metaclass=_ABSTRACT_BASE_CLASS_"
                         else:
-                            args = ""
+                            if nextAbstract:
+                                nextAbstract = False
+                                args = "metaclass=_ABSTRACT_BASE_CLASS_"
+                            else:
+                                args = ""
 
                         self.newObj(objNames, name, "class")
 
@@ -446,6 +466,15 @@ class Compiler:
                 self.out += "async "
 
                 continue
+
+            if re.match(r"\babstract:", section[charPtr:]):
+                charPtr += 9
+
+                if not self.imports["abstract"]:
+                    self.out = "from abc import abstractmethod\nfrom abc import ABC as _ABSTRACT_BASE_CLASS_\n" + self.out
+                    self.imports["abstract"] = True
+
+                nextAbstract = True
 
             if re.match(r"\bawait:", section[charPtr:]):
                 charPtr += 6
