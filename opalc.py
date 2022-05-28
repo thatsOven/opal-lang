@@ -69,7 +69,8 @@ class Compiler:
     def __resetImports(self):
         self.imports = {
             "OPAL_ASSERT_CLASSVAR": False,
-            "asyncio": False
+            "asyncio": False,
+            "abstractmethod": False
         }
 
     def newObj(self, objNames, name, type_):
@@ -199,6 +200,7 @@ class Compiler:
             re.match(r"\bclass ",          section) or
             re.match(r"\bstaticmethod ",   section) or
             re.match(r"\bclassmethod ",    section) or
+            re.match(r"\babstractmethod ", section) or
             re.match(r"\bmethod ",         section) or
             re.match(r"\brecord ",         section)
             )
@@ -227,7 +229,15 @@ class Compiler:
                         charPtr += 13
                     elif re.match(r"\bclassmethod ", section[charPtr:]):
                         translates = "@classmethod\n" + ("\t" * tabs) + "def"
-                        charPtr += 11
+                        charPtr += 12
+                        hasThis = True
+                    elif re.match(r"\babstractmethod ", section[charPtr:]):
+                        if not self.imports["abstractmethod"]:
+                            self.imports["abstractmethod"] = True
+                            self.out = "from abc import abstractmethod\n" + self.out
+
+                        translates = "@abstractmethod\n" + ("\t" * tabs) + "def"
+                        charPtr += 15
                         hasThis = True
                     elif re.match(r"\bmethod ", section[charPtr:]):
                         translates = "def"
