@@ -326,11 +326,11 @@ class Compiler:
 
                             if nextAbstract:
                                 nextAbstract = False
-                                args += ",metaclass=_ABSTRACT_BASE_CLASS_"
+                                args += ",_ABSTRACT_BASE_CLASS_"
                         else:
                             if nextAbstract:
                                 nextAbstract = False
-                                args = "metaclass=_ABSTRACT_BASE_CLASS_"
+                                args = "_ABSTRACT_BASE_CLASS_"
                             else:
                                 args = ""
 
@@ -472,7 +472,7 @@ class Compiler:
                 charPtr += 9
 
                 if not self.imports["abstract"]:
-                    self.out = "from abc import abstractmethod\nfrom abc import ABCMeta as _ABSTRACT_BASE_CLASS_\n" + self.out
+                    self.out = "from abc import abstractmethod\nfrom abc import ABC as _ABSTRACT_BASE_CLASS_\n" + self.out
                     self.imports["abstract"] = True
 
                 nextAbstract = True
