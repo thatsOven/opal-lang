@@ -190,7 +190,7 @@ class Compiler:
 
         return objNames
 
-    def __modifier(self, type_, len_, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name):
+    def __modifier(self, type_, len_, section, charPtr, objNames, tabs, loop, nextAbstract, name):
         charPtr += len_
 
         if nextAbstract: endChar = ";"
@@ -235,9 +235,6 @@ class Compiler:
 
         self.out += "):\n"
 
-        if not nextUnchecked:
-            self.out += ("\t" * (tabs + 1)) + "if type(" + propName + ") is not property:raise TypeError('unable to create " + type_ + " for a non-property object')\n"
-
         if nextAbstract:
             _, charPtr = self.getUntil(section, ";", charPtr)
             self.out += ("\t" * (tabs + 1)) + "pass\n"
@@ -256,14 +253,14 @@ class Compiler:
         else:
             self.propertyStatement(section[charPtr:], objNames, tabs, loop, name)
 
-    def __get(self, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name = None):
-        self.__modifier("getter", 3, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name)
+    def __get(self, section, charPtr, objNames, tabs, loop, nextAbstract, name = None):
+        self.__modifier("getter", 3, section, charPtr, objNames, tabs, loop, nextAbstract, name)
 
-    def __set(self, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name = None):
-        self.__modifier("setter", 3, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name)
+    def __set(self, section, charPtr, objNames, tabs, loop, nextAbstract, name = None):
+        self.__modifier("setter", 3, section, charPtr, objNames, tabs, loop, nextAbstract, name)
 
-    def __del(self, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name = None):
-        self.__modifier("deleter", 7, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name)
+    def __del(self, section, charPtr, objNames, tabs, loop, nextAbstract, name = None):
+        self.__modifier("deleter", 7, section, charPtr, objNames, tabs, loop, nextAbstract, name)
 
     def __abstract(self, section, charPtr):
         if re.match(r"\babstract:", section[charPtr:]):
@@ -284,15 +281,15 @@ class Compiler:
                 if charPtr >= len(section): break
 
             if re.match(r"\bget", section[charPtr:]):
-                self.__get(section, charPtr, objNames, tabs, loop, True, nextAbstract, name)
+                self.__get(section, charPtr, objNames, tabs, loop, nextAbstract, name)
                 return
 
             if re.match(r"\bset", section[charPtr:]):
-                self.__set(section, charPtr, objNames, tabs, loop, True, nextAbstract, name)
+                self.__set(section, charPtr, objNames, tabs, loop, nextAbstract, name)
                 return
 
             if re.match(r"\bdeleter", section[charPtr:]):
-                self.__del(section, charPtr, objNames, tabs, loop, True, nextAbstract, name)
+                self.__del(section, charPtr, objNames, tabs, loop, nextAbstract, name)
                 return
 
             if self.__abstract(section, charPtr):
@@ -539,13 +536,13 @@ class Compiler:
                     return self.__compiler(section[charPtr:], objNames, tabs, loop)
 
             if re.match(r"\bget", section[charPtr:]):
-                return self.__get(section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract)
+                return self.__get(section, charPtr, objNames, tabs, loop, nextAbstract)
 
             if re.match(r"\bset", section[charPtr:]):
-                return self.__set(section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract)
+                return self.__set(section, charPtr, objNames, tabs, loop, nextAbstract)
 
             if re.match(r"\bdeleter", section[charPtr:]):
-                return self.__del(section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract)
+                return self.__del(section, charPtr, objNames, tabs, loop, nextAbstract)
 
             if re.match(r"\bnamespace ", section[charPtr:]):
                 charPtr += 10
