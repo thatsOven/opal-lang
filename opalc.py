@@ -190,6 +190,119 @@ class Compiler:
 
         return objNames
 
+    def __modifier(self, type_, len_, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name):
+        charPtr += len_
+
+        if nextAbstract: endChar = ";"
+        else:            endChar = "{"
+
+        args, _ = self.getUntil(section, endChar, charPtr)
+
+        if name is None:
+            if args.replace(" ", "") == "" or args.replace(" ", "")[0] != "<":
+                self.__error("no property specified on a " + type_)
+                return
+
+            _, charPtr = self.getUntil(section, "<", charPtr)
+            propName, charPtr = self.getBlock(section, "<", ">", charPtr)
+            propName = propName.strip()
+        else: 
+            propName = name
+
+        if type_ == "setter":
+            args, _ = self.getUntil(section, endChar, charPtr)
+
+            if args.replace(" ", "") == "" or args.replace(" ", "")[0] != "(":
+                valueName = "value"
+            else:
+                _, charPtr = self.getUntil(section, "(", charPtr)
+                valueName, charPtr = self.getBlock(section, "(", ")", charPtr)
+                valueName = valueName.strip()
+        else: valueName = ""
+
+        self.out += ("\t" * tabs) + "@" + propName + "." + type_ + "\n"
+
+        if nextAbstract:
+            self.out += ("\t" * tabs) + "@abstractmethod\n"
+
+        self.out += ("\t" * tabs) + "def _OPAL_" + type_.upper() + "_(this"
+
+        intObjs = objNames.copy()
+        intObjs["this"] = "dynamic"
+        if valueName != "":
+            self.out += "," + valueName
+            intObjs[valueName] = "dynamic"
+
+        self.out += "):\n"
+
+        if not nextUnchecked:
+            self.out += ("\t" * (tabs + 1)) + "if type(" + propName + ") is not property:raise TypeError('unable to create " + type_ + " for a non-property object')\n"
+
+        if nextAbstract:
+            _, charPtr = self.getUntil(section, ";", charPtr)
+            self.out += ("\t" * (tabs + 1)) + "pass\n"
+        else:
+            _, charPtr = self.getUntil(section, "{", charPtr)
+            block, charPtr = self.getBlock(section, "{", "}", charPtr)
+
+            if block.replace(" ", "") == "":
+                self.out += ("\t" * (tabs + 1)) + "pass\n"
+                return
+            
+            self.__compiler(block, intObjs, tabs + 1, loop)
+
+        if name is None:
+            self.__compiler(section[charPtr:], objNames, tabs, loop)
+        else:
+            self.propertyStatement(section[charPtr:], objNames, tabs, loop, name)
+
+    def __get(self, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name = None):
+        self.__modifier("getter", 3, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name)
+
+    def __set(self, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name = None):
+        self.__modifier("setter", 3, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name)
+
+    def __del(self, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name = None):
+        self.__modifier("deleter", 7, section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract, name)
+
+    def __abstract(self, section, charPtr):
+        if re.match(r"\babstract:", section[charPtr:]):
+            if not self.imports["abstract"]:
+                self.out = "from abc import abstractmethod\nfrom abc import ABC as _ABSTRACT_BASE_CLASS_\n" + self.out
+                self.imports["abstract"] = True
+
+            return True
+        return False
+        
+    def propertyStatement(self, section, objNames, tabs, loop, name):
+        charPtr = 0
+        nextAbstract = False
+
+        while charPtr < len(section):
+            while section[charPtr] == " ":
+                charPtr += 1
+                if charPtr >= len(section): break
+
+            if re.match(r"\bget", section[charPtr:]):
+                self.__get(section, charPtr, objNames, tabs, loop, True, nextAbstract, name)
+                return
+
+            if re.match(r"\bset", section[charPtr:]):
+                self.__set(section, charPtr, objNames, tabs, loop, True, nextAbstract, name)
+                return
+
+            if re.match(r"\bdeleter", section[charPtr:]):
+                self.__del(section, charPtr, objNames, tabs, loop, True, nextAbstract, name)
+                return
+
+            if self.__abstract(section, charPtr):
+                charPtr += 9
+                nextAbstract = True
+
+                continue
+            
+            charPtr += 1
+
     def getOp(self, expr):
         for op in OPS:
             names = expr.split(op, maxsplit = 1)
@@ -408,6 +521,32 @@ class Compiler:
 
                     continue
 
+            if re.match(r"\bproperty", section[charPtr:]):
+                charPtr += 8
+
+                name, charPtr = self.getUntil(section, "{", charPtr)
+                name = name.replace(" ", "")
+
+                self.newObj(objNames, name, "untyped")
+
+                block, charPtr = self.getBlock(section, "{", "}", charPtr)
+
+                self.out += ("\t" * tabs) + name + "=property()\n"
+
+                if block.replace(" ", "") == "": continue
+                else:
+                    self.propertyStatement(section, objNames, tabs, loop, name)
+                    return self.__compiler(section[charPtr:], objNames, tabs, loop)
+
+            if re.match(r"\bget", section[charPtr:]):
+                return self.__get(section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract)
+
+            if re.match(r"\bset", section[charPtr:]):
+                return self.__set(section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract)
+
+            if re.match(r"\bdeleter", section[charPtr:]):
+                return self.__del(section, charPtr, objNames, tabs, loop, nextUnchecked, nextAbstract)
+
             if re.match(r"\bnamespace ", section[charPtr:]):
                 charPtr += 10
                 name, charPtr = self.getUntil(section, "{", charPtr)
@@ -468,14 +607,11 @@ class Compiler:
 
                 continue
 
-            if re.match(r"\babstract:", section[charPtr:]):
+            if self.__abstract(section, charPtr):
                 charPtr += 9
-
-                if not self.imports["abstract"]:
-                    self.out = "from abc import abstractmethod\nfrom abc import ABC as _ABSTRACT_BASE_CLASS_\n" + self.out
-                    self.imports["abstract"] = True
-
                 nextAbstract = True
+
+                continue
 
             if re.match(r"\bawait:", section[charPtr:]):
                 charPtr += 6
