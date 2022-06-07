@@ -677,7 +677,7 @@ class Compiler:
                 if loop is None:
                     self.__error('"continue" has been found outside of a loop')
                     continue
-                elif isinstance(loop, CompLoop):
+                elif isinstance(loop, CompLoop) and not loop.comp == "":
                     self.out += ("\t" * tabs) + loop.comp
 
                 self.out += ("\t" * tabs) + "continue\n"
