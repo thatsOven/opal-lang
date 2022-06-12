@@ -59,6 +59,7 @@ class Compiler:
     def __error(self, msg):
         self.hadError = True
         print("error:", msg)
+        input()
 
     def __warning(self, msg, line):
         print(f"warning (line {str(line + 1)}):", msg)
@@ -535,14 +536,17 @@ class Compiler:
                     self.propertyStatement(section, objNames, tabs, loop, name)
                     return self.__compiler(section[charPtr:], objNames, tabs, loop)
 
-            if re.match(r"\bget", section[charPtr:]):
-                return self.__get(section, charPtr, objNames, tabs, loop, nextAbstract)
+            if re.match(r"\bget\W", section[charPtr:]):
+                self.__get(section, charPtr, objNames, tabs, loop, nextAbstract)
+                return objNames
 
-            if re.match(r"\bset", section[charPtr:]):
-                return self.__set(section, charPtr, objNames, tabs, loop, nextAbstract)
+            if re.match(r"\bset\W", section[charPtr:]):
+                self.__set(section, charPtr, objNames, tabs, loop, nextAbstract)
+                return objNames
 
-            if re.match(r"\bdeleter", section[charPtr:]):
-                return self.__del(section, charPtr, objNames, tabs, loop, nextAbstract)
+            if re.match(r"\bdeleter\W", section[charPtr:]):
+                self.__del(section, charPtr, objNames, tabs, loop, nextAbstract)
+                return objNames
 
             if re.match(r"\bnamespace ", section[charPtr:]):
                 charPtr += 10
