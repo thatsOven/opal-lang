@@ -177,7 +177,10 @@ class Graphics:
 
             while self.stopped:
                 self.drawLoop()
-                pygame.event.get()
+                
+                for event in pygame.event.get():
+                    if event.type in self.eventActions:
+                        self.eventActions[event.type](event)
 
             for event in pygame.event.get():
                 if event.type in self.eventActions:
