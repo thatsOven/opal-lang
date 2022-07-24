@@ -103,15 +103,15 @@ class Graphics:
         self.__clock      = pygame.time.Clock()
         self.__showFps    = showFps
         self.__updateSize = not fixedSize
-        self.__stopped    = False
+        self.stopped    = False
 
         self.eventActions = {}
 
     def loopOnly(self):
-        self.__stopped = True
+        self.stopped = True
 
     def restore(self):
-        self.__stopped = False
+        self.stopped = False
 
     def getSysFont(self, font = None, size = 36):
         if font is None:
@@ -158,7 +158,7 @@ class Graphics:
             self.eventActions[pygame.QUIT] = handle
 
         while True:
-            while self.__stopped:
+            while self.stopped:
                 self.drawLoop()
                 pygame.event.get()
 
