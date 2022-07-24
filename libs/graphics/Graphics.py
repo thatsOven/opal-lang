@@ -158,10 +158,6 @@ class Graphics:
             self.eventActions[pygame.QUIT] = handle
 
         while True:
-            while self.stopped:
-                self.drawLoop()
-                pygame.event.get()
-
             if self.framerate is not None:
                 self.__clock.tick(self.framerate)
             else:
@@ -178,6 +174,10 @@ class Graphics:
                 self.screen.fill(self.backgroundColor)
 
             self.drawLoop()
+
+            while self.stopped:
+                self.drawLoop()
+                pygame.event.get()
 
             for event in pygame.event.get():
                 if event.type in self.eventActions:
