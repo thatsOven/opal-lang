@@ -59,7 +59,6 @@ class Compiler:
     def __error(self, msg):
         self.hadError = True
         print("error:", msg)
-        input()
 
     def __warning(self, msg, line):
         print(f"warning (line {str(line + 1)}):", msg)
