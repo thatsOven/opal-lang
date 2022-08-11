@@ -1245,7 +1245,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2022.5.28 - thatsOven")
+        print("opal compiler v2022.8.11 - thatsOven")
     else:
         compiler = Compiler()
 
@@ -1317,4 +1317,6 @@ if __name__ == "__main__":
                 top = 'new dynamic HOME_DIR="' + drt + '";'
 
             result = compiler.compileFile(sys.argv[1], top)
-            if not compiler.hadError: exec(result)
+            if not compiler.hadError: 
+                sys.argv = sys.argv[1:]
+                exec(result)
