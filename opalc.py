@@ -71,7 +71,8 @@ class Compiler:
         self.imports = {
             "OPAL_ASSERT_CLASSVAR": False,
             "asyncio": False,
-            "abstract": False
+            "abstract": False,
+            "OPAL_DEFAULT_PYTHON_IDENTIFIER": False
         }
 
     def newObj(self, objNames, name, type_):
@@ -128,9 +129,9 @@ class Compiler:
         block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
         if block.replace(" ", "") == "":
-            self.out += ("\t" * tabs) + statement + " " + condition.strip() + ":pass\n"
+            self.out += (" " * tabs) + statement + " " + condition.strip() + ":pass\n"
         else:
-            self.out += ("\t" * tabs) + statement + " " + condition.strip() + ":\n"
+            self.out += (" " * tabs) + statement + " " + condition.strip() + ":\n"
             objNames = self.__compiler(block, objNames, tabs + 1, inLoop)
 
         return self.__compiler(section[charPtr:], objNames, tabs, loop)
@@ -140,9 +141,9 @@ class Compiler:
         block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
         if block.replace(" ", "") == "":
-            self.out += ("\t" * tabs) + statement + ":pass\n"
+            self.out += (" " * tabs) + statement + ":pass\n"
         else:
-            self.out += ("\t" * tabs) + statement + ":\n"
+            self.out += (" " * tabs) + statement + ":\n"
             objNames = self.__compiler(block, objNames, tabs + 1, loop)
 
         return self.__compiler(section[charPtr:], objNames, tabs, loop)
@@ -160,7 +161,7 @@ class Compiler:
                 caseVal, charPtr = self.getUntil(section, "{", charPtr)
                 block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
-                self.out += ("\t" * tabs) + "elif " + caseVal.strip() + "==" + value + ":\n" + ("\t" * (tabs + 1)) + "_OPAL_MATCHED_" + str(tabs) + "=True\n"
+                self.out += (" " * tabs) + "elif " + caseVal.strip() + "==" + value + ":\n" + (" " * (tabs + 1)) + "_OPAL_MATCHED_" + str(tabs) + "=True\n"
                 if block.replace(" ", "") != "":
                     objNames = self.__compiler(block, objNames, tabs + 1, loop)
 
@@ -173,7 +174,7 @@ class Compiler:
 
                 if block.replace(" ", "") == "": break
                 else:
-                    self.out += ("\t" * tabs)  + "if _OPAL_MATCHED_" + str(tabs) + ":\n"
+                    self.out += (" " * tabs)  + "if _OPAL_MATCHED_" + str(tabs) + ":\n"
                     return self.__compiler(block, objNames, tabs + 1, loop)
 
             if re.match(r"\bdefault", section[charPtr:]):
@@ -182,7 +183,7 @@ class Compiler:
                 block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
                 if block.replace(" ", "") != "":
-                    self.out += ("\t" * tabs) + "else:\n"
+                    self.out += (" " * tabs) + "else:\n"
                     objNames = self.__compiler(block, objNames, tabs + 1, loop)
                     return self.matchStatement(section[charPtr:], objNames, value, tabs, loop)
 
@@ -220,12 +221,12 @@ class Compiler:
                 valueName = valueName.strip()
         else: valueName = ""
 
-        self.out += ("\t" * tabs) + "@" + propName + "." + type_ + "\n"
+        self.out += (" " * tabs) + "@" + propName + "." + type_ + "\n"
 
         if nextAbstract:
-            self.out += ("\t" * tabs) + "@abstractmethod\n"
+            self.out += (" " * tabs) + "@abstractmethod\n"
 
-        self.out += ("\t" * tabs) + "def _OPAL_" + type_.upper() + "_(this"
+        self.out += (" " * tabs) + "def _OPAL_" + type_.upper() + "_(this"
 
         intObjs = objNames.copy()
         intObjs["this"] = "dynamic"
@@ -237,13 +238,13 @@ class Compiler:
 
         if nextAbstract:
             _, charPtr = self.getUntil(section, ";", charPtr)
-            self.out += ("\t" * (tabs + 1)) + "pass\n"
+            self.out += (" " * (tabs + 1)) + "pass\n"
         else:
             _, charPtr = self.getUntil(section, "{", charPtr)
             block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
             if block.replace(" ", "") == "":
-                self.out += ("\t" * (tabs + 1)) + "pass\n"
+                self.out += (" " * (tabs + 1)) + "pass\n"
                 return
             
             self.__compiler(block, intObjs, tabs + 1, loop)
@@ -339,24 +340,24 @@ class Compiler:
                         translates = "@staticmethod\n"
 
                         if nextAbstract:
-                            translates += ("\t" * tabs) + "@abstractmethod\n"
+                            translates += (" " * tabs) + "@abstractmethod\n"
 
-                        translates += ("\t" * tabs) + "def"
+                        translates += (" " * tabs) + "def"
 
                         charPtr += 13
                     elif re.match(r"\bclassmethod ", section[charPtr:]):
                         translates = "@classmethod\n"
 
                         if nextAbstract:
-                            translates += ("\t" * tabs) + "@abstractmethod\n"
+                            translates += (" " * tabs) + "@abstractmethod\n"
 
-                        translates += ("\t" * tabs) + "def"
+                        translates += (" " * tabs) + "def"
 
                         charPtr += 12
                         hasThis = True
                     elif re.match(r"\bmethod ", section[charPtr:]):
                         if nextAbstract:
-                            translates = "@abstractmethod\n" + ("\t" * tabs) + "def"
+                            translates = "@abstractmethod\n" + (" " * tabs) + "def"
                         else:
                             translates = "def"
                         
@@ -405,7 +406,7 @@ class Compiler:
                             self.newObj(objNames, name, "untyped")
                             _, charPtr = self.getUntil(section, ";", charPtr)
 
-                            self.out += ("\t" * tabs) + translates + " " + name + "(" + args + "):pass\n"
+                            self.out += (" " * tabs) + translates + " " + name + "(" + args + "):pass\n"
 
                             continue
                         elif isRecord:
@@ -414,12 +415,12 @@ class Compiler:
                             _, charPtr = self.getUntil(section, ";", charPtr)
 
                             self.out += (
-                                ("\t" * tabs) + "class " + name + ":\n" +
-                                ("\t" * (tabs + 1)) + "def __init__(this," + args + "):\n"
+                                (" " * tabs) + "class " + name + ":\n" +
+                                (" " * (tabs + 1)) + "def __init__(this," + args + "):\n"
                             )
 
                             for p in params:
-                                self.out += ("\t" * (tabs + 2)) + "this." + p + "=" + p + "\n"
+                                self.out += (" " * (tabs + 2)) + "this." + p + "=" + p + "\n"
 
                             continue
                         else:
@@ -449,12 +450,12 @@ class Compiler:
                     block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
                     if args.replace(" ", "") == "" and translates == "class":
-                        self.out += ("\t" * tabs) + translates + " " + name + ":\n"
+                        self.out += (" " * tabs) + translates + " " + name + ":\n"
                     else:
-                        self.out += ("\t" * tabs) + translates + " " + name + "(" + args + "):\n"
+                        self.out += (" " * tabs) + translates + " " + name + "(" + args + "):\n"
 
                     if block.replace(" ", "") == "":
-                        self.out += ("\t" * (tabs + 1)) + "pass\n"
+                        self.out += (" " * (tabs + 1)) + "pass\n"
                         continue
                     else:
                         if translates == "class": self.__compiler(block, objNames, tabs + 1, loop)
@@ -504,17 +505,17 @@ class Compiler:
                                         self.out = "from libs.std import _OPAL_ASSERT_CLASSVAR_TYPE_\n" + self.out
                                         self.imports["OPAL_ASSERT_CLASSVAR"] = True
 
-                                    self.out += ("\t" * tabs) + name + "=_OPAL_ASSERT_CLASSVAR_TYPE_(" + classType + "," + internalInfo[1] + ")\n"
+                                    self.out += (" " * tabs) + name + "=_OPAL_ASSERT_CLASSVAR_TYPE_(" + classType + "," + internalInfo[1] + ")\n"
                                 else:
                                     self.newObj(objNames, name, varType)
 
                                     if varType == "auto":
-                                        self.out += ("\t" * tabs) + name + "=" + internalInfo[1] + "\n"
+                                        self.out += (" " * tabs) + name + "=" + internalInfo[1] + "\n"
                                     else:
-                                        self.out += ("\t" * tabs) + name + "=" + varType + "(" + internalInfo[1] + ")" + "\n"
+                                        self.out += (" " * tabs) + name + "=" + varType + "(" + internalInfo[1] + ")" + "\n"
                             else:
                                 self.newObj(objNames, name, "dynamic")
-                                self.out += ("\t" * tabs) + name + "=" + internalInfo[1] + "\n"
+                                self.out += (" " * tabs) + name + "=" + internalInfo[1] + "\n"
 
                     continue
 
@@ -528,7 +529,7 @@ class Compiler:
 
                 block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
-                self.out += ("\t" * tabs) + name + "=property()\n"
+                self.out += (" " * tabs) + name + "=property()\n"
 
                 if block.replace(" ", "") == "": continue
                 else:
@@ -557,10 +558,10 @@ class Compiler:
                 block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
                 if block.replace(" ", "") == "":
-                    self.out += ("\t" * tabs) + "class " + name + ":pass\n"
+                    self.out += (" " * tabs) + "class " + name + ":pass\n"
                     continue
                 else:
-                    self.out += ("\t" * tabs) + "class " + name + ":\n"
+                    self.out += (" " * tabs) + "class " + name + ":\n"
 
                     self.__compiler(block, objNames, tabs + 1, loop)
                     return self.__compiler(section[charPtr:], objNames, tabs, loop)
@@ -592,7 +593,7 @@ class Compiler:
                         lastPkg = ""
 
                 if not broken:
-                    self.out += ("\t" * tabs) + "import " + module + "\n"
+                    self.out += (" " * tabs) + "import " + module + "\n"
 
                 continue
 
@@ -641,7 +642,7 @@ class Compiler:
 
             if re.match(r"\@.*", section[charPtr:]):
                 expr, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + expr + "\n"
+                self.out += (" " * tabs) + expr + "\n"
 
                 continue
 
@@ -653,13 +654,13 @@ class Compiler:
 
             if re.match(r"\bquit;", section[charPtr:]):
                 charPtr += 5
-                self.out += ("\t" * tabs) + "quit()\n"
+                self.out += (" " * tabs) + "quit()\n"
 
                 continue
 
             if re.match(r"\breturn;", section[charPtr:]):
                 charPtr += 7
-                self.out += ("\t" * tabs) + "return\n"
+                self.out += (" " * tabs) + "return\n"
 
                 continue
 
@@ -670,7 +671,7 @@ class Compiler:
                     self.__error('"break" has been found outside of a loop')
                     continue
 
-                self.out += ("\t" * tabs) + "break\n"
+                self.out += (" " * tabs) + "break\n"
 
                 continue
 
@@ -681,9 +682,9 @@ class Compiler:
                     self.__error('"continue" has been found outside of a loop')
                     continue
                 elif isinstance(loop, CompLoop) and not loop.comp == "":
-                    self.out += ("\t" * tabs) + loop.comp
+                    self.out += (" " * tabs) + loop.comp
 
-                self.out += ("\t" * tabs) + "continue\n"
+                self.out += (" " * tabs) + "continue\n"
 
                 continue
 
@@ -691,70 +692,70 @@ class Compiler:
                 charPtr += 8
                 lastPkg, charPtr = self.getUntil(section, ":", charPtr)
                 lastPkg = lastPkg.strip()
-                self.out += ("\t" * tabs) + "from " + lastPkg + " "
+                self.out += (" " * tabs) + "from " + lastPkg + " "
 
                 continue
 
             if re.match(r"\breturn ", section[charPtr:]):
                 charPtr += 7
                 value, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "return " + value.strip() + "\n"
+                self.out += (" " * tabs) + "return " + value.strip() + "\n"
 
                 continue
 
             if re.match(r"\bsuper\W", section[charPtr:]):
                 charPtr += 5
                 expr, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "super" + expr.strip() + "\n"
+                self.out += (" " * tabs) + "super" + expr.strip() + "\n"
 
                 continue
 
             if re.match(r"\bdel ", section[charPtr:]):
                 charPtr += 4
                 name, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "del " + name.strip() + "\n"
+                self.out += (" " * tabs) + "del " + name.strip() + "\n"
 
                 continue
 
             if re.match(r"\bassert ", section[charPtr:]):
                 charPtr += 7
                 expr, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "assert " + expr.strip() + "\n"
+                self.out += (" " * tabs) + "assert " + expr.strip() + "\n"
 
                 continue
 
             if re.match(r"\byield ", section[charPtr:]):
                 charPtr += 6
                 expr, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "yield " + expr.strip() + "\n"
+                self.out += (" " * tabs) + "yield " + expr.strip() + "\n"
 
                 continue
 
             if re.match(r"\bglobal ", section[charPtr:]):
                 charPtr += 7
                 var, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "global " + var.replace(" ", "") + "\n"
+                self.out += (" " * tabs) + "global " + var.replace(" ", "") + "\n"
 
                 continue
 
             if re.match(r"\bexternal ", section[charPtr:]):
                 charPtr += 9
                 var, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "nonlocal " + var.replace(" ", "") + "\n"
+                self.out += (" " * tabs) + "nonlocal " + var.replace(" ", "") + "\n"
 
                 continue
 
             if re.match(r"\?[a-zA-Z0-9]+", section[charPtr:]):
                 charPtr += 1
                 value, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + "print(" + value.strip() + ")\n"
+                self.out += (" " * tabs) + "print(" + value.strip() + ")\n"
 
                 continue
 
             if re.match(r"\!.*", section[charPtr:]):
                 charPtr += 1
                 var, charPtr = self.getUntil(section, ";", charPtr)
-                self.out += ("\t" * tabs) + var + "=not " + var + "\n"
+                self.out += (" " * tabs) + var + "=not " + var + "\n"
 
                 continue
 
@@ -799,10 +800,10 @@ class Compiler:
                 condition, charPtr = self.getUntil(section, "{", charPtr)
                 block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
-                self.out += ("\t" * tabs) + "while True:\n"
+                self.out += (" " * tabs) + "while True:\n"
                 check = "if not (" + condition.strip() + "):break\n"
                 objNames = self.__compiler(block, objNames, tabs + 1, CompLoop(check))
-                self.out += ("\t" * (tabs + 1)) + check
+                self.out += (" " * (tabs + 1)) + check
 
                 return self.__compiler(section[charPtr:], objNames, tabs, loop)
 
@@ -842,7 +843,7 @@ class Compiler:
                         variable = variable.replace(" ", "")
                         if variable != "":
                             self.newObj(objNames, variable.split("=")[0], "dynamic")
-                            statement += variable + "\n" + ("\t" * tabs)
+                            statement += variable + "\n" + (" " * tabs)
 
                     info[1] = info[1].strip()
 
@@ -851,21 +852,21 @@ class Compiler:
 
                 block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
-                self.out += ("\t" * tabs) + statement
+                self.out += (" " * tabs) + statement
 
                 if len(info) != 1 and len(increments) != 0:
                     finalInc = ""
                     for increment in increments:
                         increment = increment.replace(" ", "")
                         if increment != "":
-                            finalInc += increment + "\n" + ("\t" * (tabs + 1))
+                            finalInc += increment + "\n" + (" " * (tabs + 1))
                     finalInc = finalInc[:-(tabs + 1)]
                 else: finalInc = ""
 
                 objNames = self.__compiler(block, objNames, tabs + 1, CompLoop(finalInc))
 
                 if finalInc != "":
-                    self.out += ("\t" * (tabs + 1)) + finalInc
+                    self.out += (" " * (tabs + 1)) + finalInc
 
                 return self.__compiler(section[charPtr:], objNames, tabs, loop)
 
@@ -879,7 +880,7 @@ class Compiler:
                 except ValueError:
                     block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
-                    self.out += ("\t" * tabs) + "for _ in range(int(abs(" + value + "))):\n"
+                    self.out += (" " * tabs) + "for _ in range(int(abs(" + value + "))):\n"
 
                     objNames = self.__compiler(block, objNames, tabs + 1, GenericLoop())
                     return self.__compiler(section[charPtr:], objNames, tabs, loop)
@@ -891,9 +892,9 @@ class Compiler:
                         block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
                         if int(value) > 0:
-                            self.out += ("\t" * tabs) + "for _ in range(" + value + "):\n"
+                            self.out += (" " * tabs) + "for _ in range(" + value + "):\n"
                         else:
-                            self.out += ("\t" * tabs) + "for _ in range(" + value + ",1):\n"
+                            self.out += (" " * tabs) + "for _ in range(" + value + ",1):\n"
 
                         objNames = self.__compiler(block, objNames, tabs + 1, GenericLoop())
                         return self.__compiler(section[charPtr:], objNames, tabs, loop)
@@ -904,9 +905,9 @@ class Compiler:
                 block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
                 matched = str(tabs)
-                self.out += ("\t" * tabs) + "_OPAL_MATCHED_" + matched + "=False\n" + ("\t" * tabs) + "if False:pass\n"
+                self.out += (" " * tabs) + "_OPAL_MATCHED_" + matched + "=False\n" + (" " * tabs) + "if False:pass\n"
                 objNames = self.matchStatement(block, objNames, value.strip(), tabs, loop)
-                self.out += ("\t" * tabs) + "del _OPAL_MATCHED_" + matched + "\n"
+                self.out += (" " * tabs) + "del _OPAL_MATCHED_" + matched + "\n"
 
                 return self.__compiler(section[charPtr:], objNames, tabs, loop)
 
@@ -921,23 +922,23 @@ class Compiler:
 
                 if name != "":
                     inTabs = tabs + 1
-                    self.out += ("\t" * tabs) + "class " + name + ":\n" + ("\t" * inTabs)
+                    self.out += (" " * tabs) + "class " + name + ":\n" + (" " * inTabs)
                 else: inTabs = tabs
 
-                self.out += "\t" * tabs
+                self.out += " " * tabs
                 for varName in names:
                     self.out += varName + ","
 
                 if self.out[-1] == ",":
                     self.out = self.out[:-1]
 
-                self.out += ("\t" * tabs) + "=range(" + str(len(variables)) + ")\n"
+                self.out += (" " * tabs) + "=range(" + str(len(variables)) + ")\n"
 
                 for varName in variables:
                     splitted = varName.split("=", maxsplit = 1)
 
                     if len(splitted) == 2:
-                        self.out += ("\t" * inTabs) + splitted[0].replace(" ", "") + "=" + splitted[1].strip() + "\n"
+                        self.out += (" " * inTabs) + splitted[0].replace(" ", "") + "=" + splitted[1].strip() + "\n"
 
                 continue
 
@@ -955,9 +956,9 @@ class Compiler:
                         name = name.replace(" ", "")
                         if objNames[name] == "auto":
                             autoTypes.append("_OPAL_AUTOMATIC_TYPE_" + name)
-                            self.out += ("\t" * tabs) + "_OPAL_AUTOMATIC_TYPE_" + name + "=type(" + name + ")\n"
+                            self.out += (" " * tabs) + "_OPAL_AUTOMATIC_TYPE_" + name + "=type(" + name + ")\n"
 
-                self.out += ("\t" * tabs) + names[0] + op + names[1].strip() + "\n"
+                self.out += (" " * tabs) + names[0] + op + names[1].strip() + "\n"
 
                 if not nextUnchecked:
                     for name in varsSplitted:
@@ -970,11 +971,11 @@ class Compiler:
                                     if objNames[name] != "auto":
                                         splitted = objNames[name].split("::", maxsplit = 1)
                                         if len(splitted) == 2 and splitted[0] == "classVar":
-                                            self.out += ("\t" * tabs) + name + "=_OPAL_ASSERT_CLASSVAR_TYPE_(" + splitted[1] + "," + name + ")\n"
+                                            self.out += (" " * tabs) + name + "=_OPAL_ASSERT_CLASSVAR_TYPE_(" + splitted[1] + "," + name + ")\n"
                                         else:
-                                            self.out += ("\t" * tabs) + name + "=" + objNames[name] + "(" + name + ")\n"
+                                            self.out += (" " * tabs) + name + "=" + objNames[name] + "(" + name + ")\n"
                                     else:
-                                        self.out += ("\t" * tabs) + name + "=_OPAL_AUTOMATIC_TYPE_" + name + "(" + name + ")\n" + ("\t" * tabs) + "del _OPAL_AUTOMATIC_TYPE_" + name
+                                        self.out += (" " * tabs) + name + "=_OPAL_AUTOMATIC_TYPE_" + name + "(" + name + ")\n" + (" " * tabs) + "del _OPAL_AUTOMATIC_TYPE_" + name
                 else: nextUnchecked = False
 
                 continue
@@ -994,7 +995,7 @@ class Compiler:
                 for name in names[0]:
                     objNames[name] = "dynamic"
 
-                self.out += ("\t" * tabs) + left + op + names[1].strip() + "\n"
+                self.out += (" " * tabs) + left + op + names[1].strip() + "\n"
 
                 continue
 
@@ -1004,7 +1005,7 @@ class Compiler:
 
                     expr, charPtr = self.getUntil(section, ";", charPtr)
 
-                    self.out += ("\t" * tabs)
+                    self.out += (" " * tabs)
 
                     if objNames[variable] != "untyped":
                         expr = expr.replace("++", " += 1").replace("--", " -= 1").strip()
@@ -1046,7 +1047,7 @@ class Compiler:
                     found = True
                     charPtr += len(identifier)
                     expr, charPtr = self.getUntil(section, ";", charPtr)
-                    self.out += ("\t" * tabs) + (self.useIdentifiers[identifier] + expr if self.useIdentifiers[identifier] != "::python" else expr[1:]) + "\n"
+                    self.out += (" " * tabs) + (self.useIdentifiers[identifier] + expr if self.useIdentifiers[identifier] != "::python" else expr[1:]) + "\n"
                     break
 
             if found: continue
@@ -1068,18 +1069,37 @@ class Compiler:
         with open(fileName, "r") as txt:
             for line in txt:
                 content += line
-        return content
+        return content.replace("\t", "")
+
+    def __readPy(self, fileDir):
+        if not self.imports["OPAL_DEFAULT_PYTHON_IDENTIFIER"]:
+            self.imports["OPAL_DEFAULT_PYTHON_IDENTIFIER"] = True
+            result = "use OPAL_DEFAULT_PYTHON_IDENTIFIER;"
+        else: result = ""
+        
+        for line in self.readFile(fileDir).split("\n"):
+            result += "OPAL_DEFAULT_PYTHON_IDENTIFIER." + line + ";"
+
+        return result
 
     def __preCompiler(self, source):
         source = re.sub(r"\/\*[^/\*]+\*\/", "", source)
         result = ""
         savingMacro = None
+        inPy = False
 
         for i, line in enumerate(source.split("\n")):
             noSpaceLine = line.replace(" ", "")
             if noSpaceLine == "": continue
 
             if not noSpaceLine[0] in ("$", "#"):
+                if inPy:
+                    if not self.imports["OPAL_DEFAULT_PYTHON_IDENTIFIER"]:
+                        self.imports["OPAL_DEFAULT_PYTHON_IDENTIFIER"] = True
+                        result += "use OPAL_DEFAULT_PYTHON_IDENTIFIER;"
+
+                    line = "OPAL_DEFAULT_PYTHON_IDENTIFIER." + line + ";"
+
                 if savingMacro is None:
                     result += line
                 else: savingMacro.addLine(line)
@@ -1098,8 +1118,12 @@ class Compiler:
                         self.__warning("precompiler instruction (include) found inside macro definition. ignoring line", i)
                         continue
 
-                    fileDir = expr[8:]
-                    result += self.__preCompiler(self.readFile(self.getDir(fileDir)))
+                    fileDir = self.getDir(expr[8:])
+
+                    if fileDir.endswith(".py"):
+                        result += self.__readPy(fileDir)
+                    else:
+                        result += self.__preCompiler(self.readFile(fileDir))
 
                     continue
 
@@ -1112,8 +1136,11 @@ class Compiler:
                     fileDir = self.getDir(rawDir)
 
                     included = ""
-                    for file in [os.path.join(fileDir, f) for f in os.listdir(fileDir) if f.endswith(".opal")]:
-                        included += self.readFile(file) + "\n"
+                    for file in [os.path.join(fileDir, f) for f in os.listdir(fileDir) if f.endswith(".opal") or f.endswith(".py")]:
+                        if file.endswith(".py"):
+                            result += self.__readPy(file)
+                        else:
+                            included += self.readFile(file) + "\n"
 
                     result += self.__preCompiler(included)
 
@@ -1210,6 +1237,14 @@ class Compiler:
 
                     continue
 
+                if re.match(r"\bnocompile", expr):
+                    inPy = True
+                    continue
+
+                if re.match(r"\brestore", expr):
+                    inPy = False
+                    continue
+
                 self.__warning("unknown or incomplete precompiler instruction. ignoring line", i)
 
         return self.replaceConsts(result, self.consts)
@@ -1245,7 +1280,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2022.8.11 - thatsOven")
+        print("opal compiler v2022.9.2 - thatsOven")
     else:
         compiler = Compiler()
 
