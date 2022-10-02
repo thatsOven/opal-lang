@@ -1064,12 +1064,12 @@ class Compiler:
     def getDir(self, expr):
         return eval(self.replaceConsts(expr, self.preConsts | self.consts))
 
-    def readFile(self, fileName):
+    def readFile(self, fileName, rep = False):
         content = ""
         with open(fileName, "r") as txt:
             for line in txt:
                 content += line
-        return content.replace("\t", "")
+        return content.replace("\t", " " if rep else "")
 
     def __readPy(self, fileDir):
         if not self.imports["OPAL_DEFAULT_PYTHON_IDENTIFIER"]:
@@ -1280,7 +1280,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2022.9.2 - thatsOven")
+        print("opal compiler v2022.10.2 - thatsOven")
     else:
         compiler = Compiler()
 
