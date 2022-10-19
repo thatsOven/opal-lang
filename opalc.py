@@ -703,6 +703,13 @@ class Compiler:
 
                 continue
 
+            if re.match(r"\bthrow ", section[charPtr:]):
+                charPtr += 6
+                value, charPtr = self.getUntil(section, ";", charPtr)
+                self.out += (" " * tabs) + "raise " + value.strip() + "\n"
+
+                continue
+
             if re.match(r"\bsuper\W", section[charPtr:]):
                 charPtr += 5
                 expr, charPtr = self.getUntil(section, ";", charPtr)
