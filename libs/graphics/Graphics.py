@@ -70,11 +70,11 @@ def _renderOutlineText(text, font, color, outlineColor, opx):
 
 
 class Graphics:
-    def __init__(self, resolution : Vector, framerate = 60, translated = Vector(0, 0), caption = "opal Graphics Window", backgroundColor = (0, 0, 0), showFps = False, fixedSize = True, font = pygame.font.get_default_font(), fontSize = 36, frequencySample = 96000):
-        pygame.mixer.pre_init(frequencySample, size=-16, channels=1)
+    def __init__(self, resolution : Vector, framerate = 60, translated = Vector(0, 0), caption = "opal Graphics Window", backgroundColor = (0, 0, 0), showFps = False, fixedSize = True, font = pygame.font.get_default_font(), fontSize = 36, frequencySample = 48000, audioChannels = 1):
+        pygame.mixer.pre_init(frequencySample, size = -16, channels = audioChannels)
         pygame.init()
         pygame.font.init()
-        pygame.mixer.init(frequencySample, size=-16, channels=1)
+        pygame.mixer.init(frequencySample, size = -16, channels = audioChannels)
 
         pygame.display.set_icon(
             pygame.image.load(
