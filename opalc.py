@@ -226,7 +226,7 @@ class Compiler:
         if nextAbstract:
             self.out += (" " * tabs) + "@abstractmethod\n"
 
-        self.out += (" " * tabs) + "def _OPAL_" + type_.upper() + "_(this"
+        self.out += (" " * tabs) + "def " + name + "(this"
 
         intObjs = objNames.copy()
         intObjs["this"] = "dynamic"
@@ -533,7 +533,7 @@ class Compiler:
 
                 if block.replace(" ", "") == "": continue
                 else:
-                    self.propertyStatement(section, objNames, tabs, loop, name)
+                    self.propertyStatement(block, objNames, tabs, loop, name)
                     return self.__compiler(section[charPtr:], objNames, tabs, loop)
 
             if re.match(r"\bget\W", section[charPtr:]):
@@ -1287,7 +1287,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2022.10.20 - thatsOven")
+        print("opal compiler v2022.10.22 - thatsOven")
     else:
         compiler = Compiler()
 
