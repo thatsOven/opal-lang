@@ -1287,7 +1287,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2022.10.22 - thatsOven")
+        print("opal compiler v2022.10.26 - thatsOven")
     else:
         compiler = Compiler()
 

@@ -234,6 +234,12 @@ class Graphics:
                 quit()
         return False
 
+    def setAt(self, pos : Vector, color):
+        self.screen.set_at(pos.toList(2), color)
+
+    def getAt(self, pos : Vector):
+        return self.screen.get_at(pos.toList(2))
+
     def fill(self, color):
         self.screen.fill(color)
 
