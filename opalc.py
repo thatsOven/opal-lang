@@ -68,11 +68,12 @@ class Compiler:
         print(f"error (line {str(line + 1)}):", msg)
 
     def __resetImports(self):
-        self.imports = {
+        self.flags = {
             "OPAL_ASSERT_CLASSVAR": False,
             "asyncio": False,
             "abstract": False,
-            "OPAL_DEFAULT_PYTHON_IDENTIFIER": False
+            "OPAL_DEFAULT_PYTHON_IDENTIFIER": False,
+            "mainfn": False
         }
 
     def newObj(self, objNames, name, type_):
@@ -265,9 +266,9 @@ class Compiler:
 
     def __abstract(self, section, charPtr):
         if re.match(r"\babstract:", section[charPtr:]):
-            if not self.imports["abstract"]:
+            if not self.flags["abstract"]:
                 self.out = "from abc import abstractmethod\nfrom abc import ABC as _ABSTRACT_BASE_CLASS_\n" + self.out
-                self.imports["abstract"] = True
+                self.flags["abstract"] = True
 
             return True
         return False
@@ -485,9 +486,9 @@ class Compiler:
                                     classType, _ = self.getUntil(varType, ">", 1)
                                     self.newObj(objNames, name, "classVar::" + classType)
 
-                                    if not self.imports["OPAL_ASSERT_CLASSVAR"]:
+                                    if not self.flags["OPAL_ASSERT_CLASSVAR"]:
                                         self.out = "from libs.std import _OPAL_ASSERT_CLASSVAR_TYPE_\n" + self.out
-                                        self.imports["OPAL_ASSERT_CLASSVAR"] = True
+                                        self.flags["OPAL_ASSERT_CLASSVAR"] = True
                                 else:
                                     self.newObj(objNames, name, varType)
                             else:
@@ -501,9 +502,9 @@ class Compiler:
                                     classType, _ = self.getUntil(varType, ">", 1)
                                     self.newObj(objNames, name, "classVar::" + classType)
 
-                                    if not self.imports["OPAL_ASSERT_CLASSVAR"]:
+                                    if not self.flags["OPAL_ASSERT_CLASSVAR"]:
                                         self.out = "from libs.std import _OPAL_ASSERT_CLASSVAR_TYPE_\n" + self.out
-                                        self.imports["OPAL_ASSERT_CLASSVAR"] = True
+                                        self.flags["OPAL_ASSERT_CLASSVAR"] = True
 
                                     self.out += (" " * tabs) + name + "=_OPAL_ASSERT_CLASSVAR_TYPE_(" + classType + "," + internalInfo[1] + ")\n"
                                 else:
@@ -600,9 +601,9 @@ class Compiler:
             if re.match(r"\basync:", section[charPtr:]):
                 charPtr += 6
 
-                if not self.imports["asyncio"]:
+                if not self.flags["asyncio"]:
                     self.out = "import asyncio\n" + self.out
-                    self.imports["asyncio"] = True
+                    self.flags["asyncio"] = True
 
                 self.out += "async "
 
@@ -617,9 +618,9 @@ class Compiler:
             if re.match(r"\bawait:", section[charPtr:]):
                 charPtr += 6
 
-                if not self.imports["asyncio"]:
+                if not self.flags["asyncio"]:
                     self.out = "import asyncio\n" + self.out
-                    self.imports["asyncio"] = True
+                    self.flags["asyncio"] = True
 
                 self.out += "await "
 
@@ -765,6 +766,17 @@ class Compiler:
                 self.out += (" " * tabs) + var + "=not " + var + "\n"
 
                 continue
+
+            if re.match(r"\bmain\s*\(\s*\)\s*\{", section[charPtr:]):
+                if self.flags["mainfn"]:
+                    self.__error("main function was defined multiple times")
+
+                charPtr += 4
+                _, charPtr = self.getUntil(section, "(", charPtr)
+                _, charPtr = self.getUntil(section, ")", charPtr)
+                
+                self.flags["mainfn"] = True
+                return self.simpleBlock(section, objNames, 'def _OPAL_MAIN_FUNCTION_()', charPtr, tabs, loop)
 
             if re.match(r"\bmain\s*\{", section[charPtr:]):
                 charPtr += 4
@@ -1079,8 +1091,8 @@ class Compiler:
         return content.replace("\t", " " if rep else "")
 
     def __readPy(self, fileDir):
-        if not self.imports["OPAL_DEFAULT_PYTHON_IDENTIFIER"]:
-            self.imports["OPAL_DEFAULT_PYTHON_IDENTIFIER"] = True
+        if not self.flags["OPAL_DEFAULT_PYTHON_IDENTIFIER"]:
+            self.flags["OPAL_DEFAULT_PYTHON_IDENTIFIER"] = True
             result = "use OPAL_DEFAULT_PYTHON_IDENTIFIER;"
         else: result = ""
         
@@ -1101,8 +1113,8 @@ class Compiler:
 
             if not noSpaceLine[0] in ("$", "#"):
                 if inPy:
-                    if not self.imports["OPAL_DEFAULT_PYTHON_IDENTIFIER"]:
-                        self.imports["OPAL_DEFAULT_PYTHON_IDENTIFIER"] = True
+                    if not self.flags["OPAL_DEFAULT_PYTHON_IDENTIFIER"]:
+                        self.flags["OPAL_DEFAULT_PYTHON_IDENTIFIER"] = True
                         result += "use OPAL_DEFAULT_PYTHON_IDENTIFIER;"
 
                     line = "OPAL_DEFAULT_PYTHON_IDENTIFIER." + line + ";"
@@ -1264,8 +1276,11 @@ class Compiler:
         self.hadError  = False
 
         self.__compiler(self.__preCompiler(section).replace("\t", "").replace("\n", ""), {}, 0, None)
+
+        if self.flags["mainfn"]:
+            self.out += 'if __name__=="__main__":_OPAL_MAIN_FUNCTION_()\n'
+
         self.asDynamic = False
-        
         self.consts = {}
         self.preConsts = {}
 
@@ -1287,7 +1302,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2022.10.26 - thatsOven")
+        print("opal compiler v2022.11.4 - thatsOven")
     else:
         compiler = Compiler()
 
