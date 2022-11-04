@@ -20,7 +20,7 @@ new function getInt() {
     }
 }
 
-main {
+main() {
     new int n = getInt();
 
     new int a = 0,
