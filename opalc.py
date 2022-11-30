@@ -898,8 +898,12 @@ class Compiler:
                     _ = int(value)
                 except ValueError:
                     block, charPtr = self.getBlock(section, "{", "}", charPtr)
-
-                    self.out += (" " * tabs) + "for _ in range(int(abs(" + value + "))):\n"
+                    
+                    if nextUnchecked:
+                        nextUnchecked = False
+                        self.out += (" " * tabs) + "for _ in range(" + value + "):\n"
+                    else:
+                        self.out += (" " * tabs) + "for _ in range(int(abs(" + value + "))):\n"
 
                     objNames = self.__compiler(block, objNames, tabs + 1, GenericLoop())
                     return self.__compiler(section[charPtr:], objNames, tabs, loop)
@@ -1302,7 +1306,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2022.11.4 - thatsOven")
+        print("opal compiler v2022.11.30 - thatsOven")
     else:
         compiler = Compiler()
 
