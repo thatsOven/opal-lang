@@ -234,19 +234,31 @@ class Graphics:
                 quit()
         return False
 
-    def setAt(self, pos : Vector, color):
-        self.screen.set_at(pos.toList(2), color)
+    def setAt(self, pos : Vector, color, surf = None):
+        if surf is None:
+            surf = self.screen
 
-    def getAt(self, pos : Vector):
-        return self.screen.get_at(pos.toList(2))
+        surf.set_at(pos.toList(2), color)
 
-    def fill(self, color):
-        self.screen.fill(color)
+    def getAt(self, pos : Vector, surf = None):
+        if surf is None:
+            surf = self.screen
 
-    def fillAlpha(self, color, alpha):
-        surf = pygame.Surface(self.resolution.toList(2), pygame.SRCALPHA).convert_alpha()
-        surf.fill(list(color) + [alpha])
-        self.screen.blit(surf, (0, 0))
+        return surf.get_at(pos.toList(2))
+
+    def fill(self, color, surf = None):
+        if surf is None:
+            surf = self.screen
+
+        surf.fill(color)
+
+    def fillAlpha(self, color, alpha, surf = None):
+        if surf is None:
+            surf = self.screen
+
+        alphaSurf = pygame.Surface(self.resolution.toList(2), pygame.SRCALPHA).convert_alpha()
+        alphaSurf.fill(list(color) + [alpha])
+        surf.blit(surf, (0, 0))
 
     def loadImage(self, imagePath, resolution = None):
         img = pygame.image.load(imagePath).convert_alpha()
@@ -257,53 +269,80 @@ class Graphics:
     def setIcon(self, surf):
         pygame.display.set_icon(pygame.transform.scale(surf, (32, 32)))
 
-    def blitSurf(self, surf, position):
-        self.screen.blit(surf, (position + self.center).toList(2))
+    def blitSurf(self, toBlit, position, surf = None):
+        if surf is None:
+            surf = self.screen
 
-    def line(self, pointA : Vector, pointB : Vector, color = (255, 255, 255), thickness = 1):
-        pygame.draw.line(self.screen, color, (pointA + self.center).toList(2), (pointB + self.center).toList(2), thickness)
+        surf.blit(toBlit, (position + self.center).toList(2))
 
-    def lines(self, points, color = (255, 255, 255), closed = True, thickness = 1):
+    def line(self, pointA : Vector, pointB : Vector, color = (255, 255, 255), thickness = 1, surf = None):
+        if surf is None:
+            surf = self.screen
+
+        pygame.draw.line(surf, color, (pointA + self.center).toList(2), (pointB + self.center).toList(2), thickness)
+
+    def lines(self, points, color = (255, 255, 255), closed = True, thickness = 1, surf = None):
+        if surf is None:
+            surf = self.screen
+
         ptsCopy = []
         for i in range(len(points)):
             ptsCopy.append((points[i] + self.center).toList(2))
 
-        pygame.draw.lines(self.screen, color, closed, ptsCopy, thickness)
+        pygame.draw.lines(surf, color, closed, ptsCopy, thickness)
 
-    def rectangle(self, position : Vector, size : Vector, color = (255, 255, 255), thickness = 0, alpha = 255, fromCenter = False):
+    def rectangle(self, position : Vector, size : Vector, color = (255, 255, 255), thickness = 0, alpha = 255, fromCenter = False, surf = None):
+        if surf is None:
+            surf = self.screen
+        
         lSize = size.toList(2)
         rectSurf = pygame.Surface(lSize)
         pygame.draw.rect(rectSurf, color, [0, 0] + lSize, thickness)
         rectSurf.set_alpha(alpha)
 
         if fromCenter:
-            self.screen.blit(rectSurf, (position - (size // 2) + self.center).toList(2))
+            surf.blit(rectSurf, (position - (size // 2) + self.center).toList(2))
         else:
-            self.screen.blit(rectSurf, (position + self.center).toList(2))
+            surf.blit(rectSurf, (position + self.center).toList(2))
 
-    def fastRectangle(self, position : Vector, size : Vector, color = (255, 255, 255), thickness = 0, fromCenter = False):
+    def fastRectangle(self, position : Vector, size : Vector, color = (255, 255, 255), thickness = 0, fromCenter = False, surf = None):
+        if surf is None:
+            surf = self.screen
+
         if fromCenter:
-            pygame.draw.rect(self.screen, color, (position - (size // 2) + self.center).toList(2) + size.toList(2), thickness)
+            pygame.draw.rect(surf, color, (position - (size // 2) + self.center).toList(2) + size.toList(2), thickness)
         else:
-            pygame.draw.rect(self.screen, color, (position + self.center).toList(2) + size.toList(2), thickness)
+            pygame.draw.rect(surf, color, (position + self.center).toList(2) + size.toList(2), thickness)
 
-    def circle(self, center : Vector, radius, color = (255, 255, 255), alpha = 255, thickness = 0):
+    def circle(self, center : Vector, radius, color = (255, 255, 255), alpha = 255, thickness = 0, surf = None):
+        if surf is None:
+            surf = self.screen
+
         circleSurf = pygame.Surface((radius * 2, radius * 2))
         pygame.draw.circle(circleSurf, color, (radius, radius), radius, thickness)
         circleSurf.set_alpha(alpha)
-        self.screen.blit(circleSurf, (center - radius + self.center).toList(2))
+        surf.blit(circleSurf, (center - radius + self.center).toList(2))
 
-    def fastCircle(self, center : Vector, radius, color = (255, 255, 255), thickness = 0):
-        pygame.draw.circle(self.screen, color, (center + self.center).toList(2), radius, thickness)
+    def fastCircle(self, center : Vector, radius, color = (255, 255, 255), thickness = 0, surf = None):
+        if surf is None:
+            surf = self.screen
 
-    def polygon(self, points, color = (255, 255, 255), thickness = 0):
+        pygame.draw.circle(surf, color, (center + self.center).toList(2), radius, thickness)
+
+    def polygon(self, points, color = (255, 255, 255), thickness = 0, surf = None):
+        if surf is None:
+            surf = self.screen
+
         ptsCopy = []
         for i in range(len(points)):
             ptsCopy.append((points[i] + self.center).toList(2))
 
-        pygame.draw.polygon(self.screen, color, ptsCopy, thickness)
+        pygame.draw.polygon(surf, color, ptsCopy, thickness)
 
-    def simpleText(self, text : str, pos : Vector, color = (255, 255, 255), centerX = False, centerY = False, font = None):
+    def simpleText(self, text : str, pos : Vector, color = (255, 255, 255), centerX = False, centerY = False, font = None, surf = None):
+        if surf is None:
+            surf = self.screen
+
         if font is None:
             font = self.font
 
@@ -317,10 +356,13 @@ class Graphics:
         if centerY:
             cPos.y -= r.height // 2
 
-        self.screen.blit(s, (cPos + self.center).toList(2))
+        surf.blit(s, (cPos + self.center).toList(2))
 
 
-    def drawText(self, text : list, pos : Vector, shadow = False, color = (255, 255, 255), shadowOffset = 4, font = None):
+    def drawText(self, text : list, pos : Vector, shadow = False, color = (255, 255, 255), shadowOffset = 4, font = None, surf = None):
+        if surf is None:
+            surf = self.screen
+
         if font is None:
             font = self.font
 
@@ -336,21 +378,24 @@ class Graphics:
 
         for _ in range(2 if shadow else 1):
             for i in range(len(text)):
-                self.screen.blit(font.render(text[i], True, color), (intPos + shadowOffset).toList(2))
+                surf.blit(font.render(text[i], True, color), (intPos + shadowOffset).toList(2))
                 intPos.y += font.get_height()
 
             color        = origColor
             pos          = origPos.copy()
             shadowOffset = 0
 
-    def drawOutlineText(self, text : list, pos : Vector, color = (255, 255, 255), outlineColor = (0, 0, 0), outlineSize = 2, font = None):
+    def drawOutlineText(self, text : list, pos : Vector, color = (255, 255, 255), outlineColor = (0, 0, 0), outlineSize = 2, font = None, surf = None):
+        if surf is None:
+            surf = self.screen
+        
         if font is None:
             font = self.font
 
         intPos = pos.copy() + self.center
 
         for line in text:
-            self.screen.blit(_renderOutlineText(line, font, color, outlineColor, outlineSize), intPos.toList(2))
+            surf.blit(_renderOutlineText(line, font, color, outlineColor, outlineSize), intPos.toList(2))
             intPos.y += font.get_height()
 
     def playWaveforms(self, waveforms):
