@@ -118,12 +118,15 @@ class Graphics:
             return pygame.font.SysFont(self.__font, size)
         else: return pygame.font.SysFont(font, size)
 
+    @classmethod
     def getFont(self, font, size = 36):
         return pygame.font.Font(font, size)
 
+    @classmethod
     def getAudioChs(self):
         return pygame.mixer.get_init()
 
+    @classmethod
     def loadAudioFile(self, file):
         return pygame.mixer.Sound(file)
 
@@ -194,9 +197,11 @@ class Graphics:
             self.eventActions[evType] = func
         return dec
 
+    @classmethod
     def getMousePos(self):
         return Vector().fromList(pygame.mouse.get_pos())
 
+    @classmethod
     def rawUpdate(self):
         pygame.display.update()
 
@@ -224,9 +229,11 @@ class Graphics:
         else:
             self.__clock.tick()
 
+    @classmethod
     def getEvents(self):
         return pygame.event.get()
 
+    @classmethod
     def hasQuit(self, returner = False):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -234,24 +241,28 @@ class Graphics:
                 quit()
         return False
 
+    @classmethod
     def setAt(self, pos : Vector, color, surf = None):
         if surf is None:
             surf = self.screen
 
         surf.set_at(pos.toList(2), color)
 
+    @classmethod
     def getAt(self, pos : Vector, surf = None):
         if surf is None:
             surf = self.screen
 
         return surf.get_at(pos.toList(2))
 
+    @classmethod
     def fill(self, color, surf = None):
         if surf is None:
             surf = self.screen
 
         surf.fill(color)
 
+    @classmethod
     def fillAlpha(self, color, alpha, surf = None):
         if surf is None:
             surf = self.screen
@@ -260,40 +271,50 @@ class Graphics:
         alphaSurf.fill(list(color) + [alpha])
         surf.blit(surf, (0, 0))
 
+    @classmethod
     def loadImage(self, imagePath, resolution = None):
         img = pygame.image.load(imagePath).convert_alpha()
         if resolution is not None:
             img = pygame.transform.scale(img, resolution.toList(2))
         return img
 
+    @classmethod
     def setIcon(self, surf):
         pygame.display.set_icon(pygame.transform.scale(surf, (32, 32)))
 
     def blitSurf(self, toBlit, position, surf = None):
         if surf is None:
+            cnt  = self.center
             surf = self.screen
+        else: cnt = Vector()
 
-        surf.blit(toBlit, (position + self.center).toList(2))
+        surf.blit(toBlit, (position + cnt).toList(2))
 
     def line(self, pointA : Vector, pointB : Vector, color = (255, 255, 255), thickness = 1, surf = None):
         if surf is None:
+            cnt  = self.center
             surf = self.screen
+        else: cnt = Vector()
 
-        pygame.draw.line(surf, color, (pointA + self.center).toList(2), (pointB + self.center).toList(2), thickness)
+        pygame.draw.line(surf, color, (pointA + cnt).toList(2), (pointB + cnt).toList(2), thickness)
 
     def lines(self, points, color = (255, 255, 255), closed = True, thickness = 1, surf = None):
         if surf is None:
+            cnt  = self.center
             surf = self.screen
+        else: cnt = Vector()
 
         ptsCopy = []
         for i in range(len(points)):
-            ptsCopy.append((points[i] + self.center).toList(2))
+            ptsCopy.append((points[i] + cnt).toList(2))
 
         pygame.draw.lines(surf, color, closed, ptsCopy, thickness)
 
     def rectangle(self, position : Vector, size : Vector, color = (255, 255, 255), thickness = 0, alpha = 255, fromCenter = False, surf = None):
         if surf is None:
+            cnt  = self.center
             surf = self.screen
+        else: cnt = Vector()
         
         lSize = size.toList(2)
         rectSurf = pygame.Surface(lSize)
@@ -301,47 +322,57 @@ class Graphics:
         rectSurf.set_alpha(alpha)
 
         if fromCenter:
-            surf.blit(rectSurf, (position - (size // 2) + self.center).toList(2))
+            surf.blit(rectSurf, (position - (size // 2) + cnt).toList(2))
         else:
-            surf.blit(rectSurf, (position + self.center).toList(2))
+            surf.blit(rectSurf, (position + cnt).toList(2))
 
     def fastRectangle(self, position : Vector, size : Vector, color = (255, 255, 255), thickness = 0, fromCenter = False, surf = None):
         if surf is None:
+            cnt  = self.center
             surf = self.screen
+        else: cnt = Vector()
 
         if fromCenter:
-            pygame.draw.rect(surf, color, (position - (size // 2) + self.center).toList(2) + size.toList(2), thickness)
+            pygame.draw.rect(surf, color, (position - (size // 2) + cnt).toList(2) + size.toList(2), thickness)
         else:
-            pygame.draw.rect(surf, color, (position + self.center).toList(2) + size.toList(2), thickness)
+            pygame.draw.rect(surf, color, (position + cnt).toList(2) + size.toList(2), thickness)
 
     def circle(self, center : Vector, radius, color = (255, 255, 255), alpha = 255, thickness = 0, surf = None):
         if surf is None:
+            cnt  = self.center
             surf = self.screen
+        else: cnt = Vector()
 
         circleSurf = pygame.Surface((radius * 2, radius * 2))
         pygame.draw.circle(circleSurf, color, (radius, radius), radius, thickness)
         circleSurf.set_alpha(alpha)
-        surf.blit(circleSurf, (center - radius + self.center).toList(2))
+        surf.blit(circleSurf, (center - radius + cnt).toList(2))
 
     def fastCircle(self, center : Vector, radius, color = (255, 255, 255), thickness = 0, surf = None):
         if surf is None:
+            cnt  = self.center
             surf = self.screen
+        else: cnt = Vector()
 
-        pygame.draw.circle(surf, color, (center + self.center).toList(2), radius, thickness)
+        pygame.draw.circle(surf, color, (center + cnt).toList(2), radius, thickness)
 
     def polygon(self, points, color = (255, 255, 255), thickness = 0, surf = None):
         if surf is None:
+            cnt  = self.center
             surf = self.screen
+        else: cnt = Vector()
 
         ptsCopy = []
         for i in range(len(points)):
-            ptsCopy.append((points[i] + self.center).toList(2))
+            ptsCopy.append((points[i] + cnt).toList(2))
 
         pygame.draw.polygon(surf, color, ptsCopy, thickness)
 
     def simpleText(self, text : str, pos : Vector, color = (255, 255, 255), centerX = False, centerY = False, font = None, surf = None):
         if surf is None:
+            cnt  = self.center
             surf = self.screen
+        else: cnt = Vector()
 
         if font is None:
             font = self.font
@@ -356,12 +387,14 @@ class Graphics:
         if centerY:
             cPos.y -= r.height // 2
 
-        surf.blit(s, (cPos + self.center).toList(2))
+        surf.blit(s, (cPos + cnt).toList(2))
 
 
     def drawText(self, text : list, pos : Vector, shadow = False, color = (255, 255, 255), shadowOffset = 4, font = None, surf = None):
         if surf is None:
+            cnt  = self.center
             surf = self.screen
+        else: cnt = Vector()
 
         if font is None:
             font = self.font
@@ -374,7 +407,7 @@ class Graphics:
         else:
             color = (0, 0, 0)
 
-        intPos = pos.copy() + self.center
+        intPos = pos.copy() + cnt
 
         for _ in range(2 if shadow else 1):
             for i in range(len(text)):
@@ -387,24 +420,29 @@ class Graphics:
 
     def drawOutlineText(self, text : list, pos : Vector, color = (255, 255, 255), outlineColor = (0, 0, 0), outlineSize = 2, font = None, surf = None):
         if surf is None:
+            cnt  = self.center
             surf = self.screen
+        else: cnt = Vector()
         
         if font is None:
             font = self.font
 
-        intPos = pos.copy() + self.center
+        intPos = pos.copy() + cnt
 
         for line in text:
             surf.blit(_renderOutlineText(line, font, color, outlineColor, outlineSize), intPos.toList(2))
             intPos.y += font.get_height()
 
+    @classmethod
     def playWaveforms(self, waveforms):
         for waveform in waveforms:
             pygame.sndarray.make_sound(waveform.astype(numpy.int16)).play()
 
+    @classmethod
     def stopSounds(self):
         pygame.mixer.stop()
 
+    @classmethod
     def stopPlay(self, waveforms):
         toPlay = []
         for waveform in waveforms:
@@ -415,5 +453,6 @@ class Graphics:
         for waveform in toPlay:
             waveform.play()
 
+    @classmethod
     def quit(self):
         pygame.quit()
