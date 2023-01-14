@@ -258,7 +258,7 @@ class Graphics:
 
         alphaSurf = pygame.Surface(self.resolution.toList(2), pygame.SRCALPHA).convert_alpha()
         alphaSurf.fill(list(color) + [alpha])
-        surf.blit(surf, (0, 0))
+        surf.blit(alphaSurf, (0, 0))
 
     def loadImage(self, imagePath, resolution = None):
         img = pygame.image.load(imagePath).convert_alpha()
