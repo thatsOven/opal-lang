@@ -189,6 +189,9 @@ class Graphics:
             if autoUpdate:
                 pygame.display.update()
 
+    def getFps(self):
+        return self.__clock.get_fps()
+
     def event(self, evType):
         def dec(func):
             self.eventActions[evType] = func
