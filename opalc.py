@@ -26,7 +26,8 @@ import re, os, sys, py_compile, importlib
 from timeit  import default_timer
 from pathlib import Path
 
-OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "=")
+OPS    = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "=")
+PRE310 = sys.version_info < (3, 10)
 
 class GenericLoop: pass
 
@@ -162,9 +163,9 @@ class Compiler:
                 caseVal, charPtr = self.getUntil(section, "{", charPtr)
                 block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
-                self.out += (" " * tabs) + "elif " + caseVal.strip() + "==" + value + ":\n" + (" " * (tabs + 1)) + "_OPAL_MATCHED_" + str(tabs) + "=True\n"
+                self.out += (" " * (tabs + 1)) + "case " + caseVal + ":\n" + (" " * (tabs + 2)) + "_OPAL_MATCHED_" + str(tabs) + "=True\n"
                 if block.replace(" ", "") != "":
-                    objNames = self.__compiler(block, objNames, tabs + 1, loop)
+                    objNames = self.__compiler(block, objNames, tabs + 2, loop)
 
                 return self.matchStatement(section[charPtr:], objNames, value, tabs, loop)
 
@@ -184,9 +185,52 @@ class Compiler:
                 block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
                 if block.replace(" ", "") != "":
+                    self.out += (" " * (tabs + 1)) + "case _:\n"
+                    objNames = self.__compiler(block, objNames, tabs + 2, loop)
+                    return self.matchStatement(section[charPtr:], objNames, value, tabs, loop)
+
+            charPtr += 1
+
+        return objNames
+
+    def matchStatementPre310(self, section, objNames, value, tabs, loop):
+        charPtr = 0
+
+        while charPtr < len(section):
+            while section[charPtr] == " ":
+                charPtr += 1
+                if charPtr >= len(section): break
+
+            if re.match(r"\bcase", section[charPtr:]):
+                charPtr += 4
+                caseVal, charPtr = self.getUntil(section, "{", charPtr)
+                block, charPtr = self.getBlock(section, "{", "}", charPtr)
+
+                self.out += (" " * tabs) + "elif " + caseVal.strip() + "==" + value + ":\n" + (" " * (tabs + 1)) + "_OPAL_MATCHED_" + str(tabs) + "=True\n"
+                if block.replace(" ", "") != "":
+                    objNames = self.__compiler(block, objNames, tabs + 1, loop)
+
+                return self.matchStatementPre310(section[charPtr:], objNames, value, tabs, loop)
+
+            if re.match(r"\bfound", section[charPtr:]):
+                charPtr += 5
+                _, charPtr = self.getUntil(section, "{", charPtr)
+                block, charPtr = self.getBlock(section, "{", "}", charPtr)
+
+                if block.replace(" ", "") == "": break
+                else:
+                    self.out += (" " * tabs)  + "if _OPAL_MATCHED_" + str(tabs) + ":\n"
+                    return self.__compiler(block, objNames, tabs + 1, loop)
+
+            if re.match(r"\bdefault", section[charPtr:]):
+                charPtr += 7
+                _, charPtr = self.getUntil(section, "{", charPtr)
+                block, charPtr = self.getBlock(section, "{", "}", charPtr)
+
+                if block.replace(" ", "") != "":
                     self.out += (" " * tabs) + "else:\n"
                     objNames = self.__compiler(block, objNames, tabs + 1, loop)
-                    return self.matchStatement(section[charPtr:], objNames, value, tabs, loop)
+                    return self.matchStatementPre310(section[charPtr:], objNames, value, tabs, loop)
 
             charPtr += 1
 
@@ -927,9 +971,18 @@ class Compiler:
                 value, charPtr = self.getUntil(section, "{", charPtr)
                 block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
+                if block.replace(" ", "") == "": continue
+
                 matched = str(tabs)
-                self.out += (" " * tabs) + "_OPAL_MATCHED_" + matched + "=False\n" + (" " * tabs) + "if False:pass\n"
-                objNames = self.matchStatement(block, objNames, value.strip(), tabs, loop)
+                self.out += (" " * tabs) + "_OPAL_MATCHED_" + matched + "=False\n" + (" " * tabs)
+
+                if PRE310:
+                    self.out += "if False:pass\n"
+                    objNames = self.matchStatementPre310(block, objNames, value.strip(), tabs, loop)
+                else:
+                    self.out += "match " + value + ":\n"
+                    objNames = self.matchStatement(block, objNames, value.strip(), tabs, loop)
+
                 self.out += (" " * tabs) + "del _OPAL_MATCHED_" + matched + "\n"
 
                 return self.__compiler(section[charPtr:], objNames, tabs, loop)
@@ -1306,13 +1359,17 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2022.11.30 - thatsOven")
+        print("opal compiler v2023.1.31 - thatsOven")
     else:
         compiler = Compiler()
 
         if "--dynamic" in sys.argv:
             compiler.asDynamic = True
             sys.argv.remove("--dynamic")
+
+        if "--old-match" in sys.argv:
+            PRE310 = True
+            sys.argv.remove("--old-match")
 
         if "--dir" in sys.argv:
             findDir = False
