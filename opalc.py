@@ -1321,6 +1321,10 @@ class Compiler:
                     inPy = False
                     continue
 
+                if re.match(r"\bcompilerArgs", expr):
+                    self.handleArgs(expr[12:].split(" "))
+                    continue
+
                 self.__warning("unknown or incomplete precompiler instruction. ignoring line", i)
 
         return self.replaceConsts(result, self.consts)
@@ -1354,22 +1358,28 @@ class Compiler:
             with open(fileOut, "w") as txt:
                 txt.write(result)
 
+    def handleArgs(self, args):
+        global PRE310
+
+        if "--dynamic" in args:
+            print("dynamic")
+            self.asDynamic = True
+            args.remove("--dynamic")
+
+        if "--old-match" in args:
+            print("old match")
+            PRE310 = True
+            args.remove("--old-match")
+
 def getHomeDirFromFile(file):
     return str(Path(file).parent.absolute()).replace("\\", "\\\\\\\\")
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.1.31 - thatsOven")
+        print("opal compiler v2023.2.2 - thatsOven")
     else:
         compiler = Compiler()
-
-        if "--dynamic" in sys.argv:
-            compiler.asDynamic = True
-            sys.argv.remove("--dynamic")
-
-        if "--old-match" in sys.argv:
-            PRE310 = True
-            sys.argv.remove("--old-match")
+        compiler.handleArgs(sys.argv)
 
         if "--dir" in sys.argv:
             findDir = False
