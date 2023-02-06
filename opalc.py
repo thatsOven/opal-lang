@@ -193,7 +193,7 @@ class Compiler:
 
         return objNames
 
-    def matchStatementPre310(self, section, objNames, value, tabs, loop):
+    def matchStatementPre310(self, section, objNames, value, tabs, loop, op):
         charPtr = 0
 
         while charPtr < len(section):
@@ -206,11 +206,11 @@ class Compiler:
                 caseVal, charPtr = self.getUntil(section, "{", charPtr)
                 block, charPtr = self.getBlock(section, "{", "}", charPtr)
 
-                self.out += (" " * tabs) + "elif " + caseVal.strip() + "==" + value + ":\n" + (" " * (tabs + 1)) + "_OPAL_MATCHED_" + str(tabs) + "=True\n"
+                self.out += (" " * tabs) + "elif " + caseVal.strip() + f" {op} " + value + ":\n" + (" " * (tabs + 1)) + "_OPAL_MATCHED_" + str(tabs) + "=True\n"
                 if block.replace(" ", "") != "":
                     objNames = self.__compiler(block, objNames, tabs + 1, loop)
 
-                return self.matchStatementPre310(section[charPtr:], objNames, value, tabs, loop)
+                return self.matchStatementPre310(section[charPtr:], objNames, value, tabs, loop, op)
 
             if re.match(r"\bfound", section[charPtr:]):
                 charPtr += 5
@@ -230,7 +230,7 @@ class Compiler:
                 if block.replace(" ", "") != "":
                     self.out += (" " * tabs) + "else:\n"
                     objNames = self.__compiler(block, objNames, tabs + 1, loop)
-                    return self.matchStatementPre310(section[charPtr:], objNames, value, tabs, loop)
+                    return self.matchStatementPre310(section[charPtr:], objNames, value, tabs, loop, op)
 
             charPtr += 1
 
@@ -965,6 +965,25 @@ class Compiler:
 
                         objNames = self.__compiler(block, objNames, tabs + 1, GenericLoop())
                         return self.__compiler(section[charPtr:], objNames, tabs, loop)
+                    
+            if re.match(r"\bmatch\s*\<.*\>\s*.+\{", section[charPtr:]):
+                charPtr += 5
+                _, charPtr     = self.getUntil(section, "<", charPtr)
+                op, charPtr    = self.getUntil(section, ">", charPtr)
+                value, charPtr = self.getUntil(section, "{", charPtr)
+                block, charPtr = self.getBlock(section, "{", "}", charPtr)
+
+                op = op.replace(" ", "")
+                if op == "": op = "=="
+
+                if block.replace(" ", "") == "": continue
+
+                matched = str(tabs)
+                self.out += (" " * tabs) + "_OPAL_MATCHED_" + matched + "=False\n" + (" " * tabs) + "if False:pass\n"
+                objNames = self.matchStatementPre310(block, objNames, value.strip(), tabs, loop, op)
+                self.out += (" " * tabs) + "del _OPAL_MATCHED_" + matched + "\n"
+
+                return self.__compiler(section[charPtr:], objNames, tabs, loop)
 
             if re.match(r"\bmatch.+\{", section[charPtr:]):
                 charPtr += 5
@@ -978,7 +997,7 @@ class Compiler:
 
                 if PRE310:
                     self.out += "if False:pass\n"
-                    objNames = self.matchStatementPre310(block, objNames, value.strip(), tabs, loop)
+                    objNames = self.matchStatementPre310(block, objNames, value.strip(), tabs, loop, "==")
                 else:
                     self.out += "match " + value + ":\n"
                     objNames = self.matchStatement(block, objNames, value.strip(), tabs, loop)
