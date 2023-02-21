@@ -1675,7 +1675,7 @@ class Compiler:
 
                 _, code = self.getUntilNotInExpr(";", tokens, True, advance = False)
 
-                self.out += (" " * embedTabs) + Tokens(code).join() + "\n"
+                self.out += (" " * (embedTabs + tabs)) + Tokens(code).join() + "\n"
             else:
                 self.__error(f'unknown statement', next)
 
