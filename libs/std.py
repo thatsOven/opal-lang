@@ -185,3 +185,7 @@ def _OPAL_ASSERT_CLASSVAR_TYPE_(className, inputVal):
     else:                           raise  TypeError("Invalid type " + str(type(inputVal)) + " for variable of type " + str(className))
 
 class dynamic: pass
+
+def _OPAL_PRINT_RETURN_(val):
+    print(val)
+    return val
