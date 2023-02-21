@@ -152,9 +152,7 @@ class Tokens:
 
                 lastIsIdentifier = True
             else:
-                if token.tok.isdigit():
-                      lastIsIdentifier = True
-                else: lastIsIdentifier = False
+                lastIsIdentifier = token.tok.isdigit()
 
                 if lastIdentifier is not None and (lastIdentifier + token.tok).isidentifier():
                     buf += " " + token.tok
