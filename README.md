@@ -366,8 +366,8 @@ Some statements are direct equivalents of Python statements or functions. Here's
 ```
   opal   | Python
 --------------------
-async:   | async
-await:   | await
+async    | async
+await    | await
 with     | with
 quit     | quit()
 super    | super()

@@ -597,11 +597,6 @@ class Compiler:
     
     def __asyncGen(self, keyw):
         def fn(tokens : Tokens, tabs, loop, objNames):
-            next = tokens.peek()
-            if next.tok != ":":
-                next.warning(f'expecting ":" after "{keyw}". ignoring')
-            else: tokens.next()
-
             self.out += (" " * tabs) + keyw + " "
 
             return loop, objNames
