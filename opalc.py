@@ -379,6 +379,7 @@ class Compiler:
                 hasThis = True 
             case "record":
                 if self.nextAbstract:
+                    self.nextAbstract = False
                     self.__error("cannot create abstract record", next)
                     return loop, objNames
 
@@ -394,6 +395,9 @@ class Compiler:
         if translates != "class" or isRecord:
             next = tokens.peek()
             if next.tok != "(":
+                if self.nextAbstract:
+                    self.nextAbstract = False
+                    
                 self.__error('expecting character "("', next)
                 return loop, objNames
             else: tokens.next()
@@ -921,6 +925,9 @@ class Compiler:
             else:
                 self.out += f"for _ in range(abs(int({value}))):"
         else:
+            if self.nextUnchecked:
+                self.nextUnchecked = False
+
             if intVal == 0:
                 Token(
                     " " * (valList[-1].pos - valList[0].pos + 1), 
@@ -1016,6 +1023,9 @@ class Compiler:
 
             next = tokens.next()
             if next.tok != "(":
+                if self.nextUnchecked:
+                    self.nextUnchecked = False
+
                 self.__error('invalid syntax: expecting "(" after "match:"')
                 return loop, objNames
             
@@ -1028,14 +1038,15 @@ class Compiler:
         _, value = self.getUntilNotInExpr("{", tokens, True, advance = False)
         block = self.getSameLevelParenthesis("{", "}", tokens)
 
-        if len(block) == 0:
-            return loop, objNames
-        
         unchecked = self.nextUnchecked
 
         if unchecked: 
             self.nextUnchecked = False
-        else:
+
+        if len(block) == 0:
+            return loop, objNames
+        
+        if not unchecked:
             matched = str(tabs)
             self.out += (" " * tabs) + f"_OPAL_MATCHED_{tabs}=False\n"
     
@@ -1722,7 +1733,7 @@ class Compiler:
 
                     strippedLine = line.lstrip()
                     tabs = len(line) - len(strippedLine)
-                    line = f"__OPAL_PYTHON_EMBED-{tabs}." + line + ";"
+                    line = f"__OPAL_PYTHON_EMBED-{tabs}." + strippedLine.rstrip() + ";"
 
                 if savingMacro is None:
                     result += line + "\n"
