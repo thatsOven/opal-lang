@@ -474,7 +474,7 @@ class Compiler:
                 )
 
                 for var in internalVars:
-                    self.out += (" " * (tabs + 2)) + f"this.{var}={var}\n"
+                    self.out += (" " * (tabs + 2)) + f"this.{var[0]}={var[0]}\n"
 
                 return loop, objNames
             
@@ -1198,7 +1198,7 @@ class Compiler:
                     if next is None: break
                     else: variablesDef.next()
                 else:
-                    backPos = variablesDef.pos
+                    backPos = variablesDef.pos - 1
                     next, name = self.getUntilNotInExpr(",", variablesDef, True, False, False, SET_OPS)
 
                     if next == "":
@@ -1238,6 +1238,9 @@ class Compiler:
 
         match cnt:
             case 2: # C-like for
+                rndBracks = tokens.peek().tok == "("
+                if rndBracks: tokens.next()
+
                 if tokens.peek().tok == ";": tokens.next()
                 else:
                     _, variablesDef = self.getUntilNotInExpr(";", tokens, True, advance = False)
@@ -1255,7 +1258,12 @@ class Compiler:
                     tokens.next()
                     increments = ""
                 else:
-                    _, increments = self.getUntilNotInExpr("{", tokens, True, advance = False)
+                    if rndBracks:
+                        _, increments = self.getUntilNotInExpr(")", tokens, True, advance = False)
+                        self.checkDirectNext("{", "for loop", tokens)
+                    else:
+                        _, increments = self.getUntilNotInExpr("{", tokens, True, advance = False)
+
                     objNames, increments = self.__handleAssignmentChain(tabs + 1, objNames, increments)
 
                 statement = [Token("while")] + condition
@@ -1294,7 +1302,7 @@ class Compiler:
         
         self.out += "\n"
         
-        _, objNames = self.__compiler(Tokens(block), tabs + 1, CompLoop(increments), objNames)
+        _, objNames = self.__compiler(Tokens(block), tabs + 1, CompLoop(increments.lstrip()), objNames)
 
         if increments != "": self.out += increments
             
@@ -1843,7 +1851,7 @@ class Compiler:
                                 if macro.args == args:
                                     result += f"new dynamic {macro.args};"
                                 else:
-                                    result += f"new dynamic {macro.args};{macro.args}={args};"
+                                    result += f"new dynamic {macro.args};{macro.args}={Tokens(args).join()};"
                                 
                         result += macro.code
                     case "nocompile":
