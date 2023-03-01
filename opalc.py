@@ -534,17 +534,14 @@ class Compiler:
                 self.out = "from libs.std import _OPAL_ASSERT_CLASSVAR_TYPE_\n" + self.out
                 self.flags["OPAL_ASSERT_CLASSVAR"] = True
 
-            next = tokens.next()
-            type_ = next.tok
-
-            next = tokens.next()
-            if next.tok != ">":
-                next.warning("invalid syntax: type angular brackets should be closed. ignoring")
-                next = tokens.next()
+            type_ = Tokens(self.getSameLevelParenthesis("<", ">", tokens)).join()
 
             mode = TypeCheckMode.CHECK
         else:
-            type_ = next.tok
+            if next.tok == "(":
+                type_ = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
+            else:
+                type_ = next.tok
 
             if type_ == "dynamic":
                   mode = TypeCheckMode.NOCHECK
@@ -1064,12 +1061,7 @@ class Compiler:
                     localName = next
                 else: 
                     tokens.next()
-                    localName = tokens.next()
-
-                next = tokens.peek()
-                if next.tok != ">":
-                    next.warning("invalid syntax: property angular brackets should be closed. ignoring")
-                else: tokens.next()
+                    localName = Tokens(self.getSameLevelParenthesis("<", ">", tokens)).join()
             else: localName = name
 
             self.out += (" " * tabs) + Tokens([Token("@"), localName, Token("."), Token(type_)]).join() + "\n"
