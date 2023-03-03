@@ -15,7 +15,7 @@ with open("run.py", "w") as script:
 
 chdir(spath)
 
-copy("icon.ico", "tmp")
+copy("icon.ico", path.join("tmp", "icon.ico"))
 
 run((
     "--onefile",
