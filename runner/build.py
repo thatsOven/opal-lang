@@ -2,7 +2,7 @@ from PyInstaller.__main__ import run
 from distutils.dir_util   import copy_tree
 from shutil               import rmtree, copy
 from pathlib              import Path
-from os                   import chdir, path, getcwd, remove
+from os                   import chdir, path, getcwd, remove, mkdir
 
 spath = str(Path(__file__).parent.absolute())
 chdir(spath)
@@ -15,6 +15,7 @@ with open("run.py", "w") as script:
 
 chdir(spath)
 
+mkdir("tmp")
 copy("icon.ico", path.join("tmp", "icon.ico"))
 
 run((
