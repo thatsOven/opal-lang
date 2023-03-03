@@ -19,15 +19,18 @@ run((
     "--onefile",
     "--icon=icon.ico",
     "--workpath=tmp",
+    "--specpath=tmp",
     "--distpath=run",
     "--clean",
     "run.py"
 ))
 
-rmtree("tmp")
-rmtree("__pycache__")
-remove("run.spec")
 remove("run.py")
+
+rmtree("tmp")
+
+if path.exists("__pycache__"):
+    rmtree("__pycache__")
 
 chdir("..")
 copy_tree(path.join(spath, "run"), getcwd())
