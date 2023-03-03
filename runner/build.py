@@ -1,6 +1,6 @@
 from PyInstaller.__main__ import run
 from distutils.dir_util   import copy_tree
-from shutil               import rmtree
+from shutil               import rmtree, copy
 from pathlib              import Path
 from os                   import chdir, path, getcwd, remove
 
@@ -14,6 +14,8 @@ with open("run.py", "w") as script:
     script.write(f"run(['python', '{p}'] + argv[1:])")
 
 chdir(spath)
+
+copy("icon.ico", "tmp")
 
 run((
     "--onefile",
