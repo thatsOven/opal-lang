@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import re, os, sys, py_compile
+import re, os, sys, py_compile, colorama
 from importlib import import_module
 from timeit    import default_timer
 from pathlib   import Path
@@ -46,31 +46,45 @@ class Macro:
 
 class Token:
     def __init__(self, tok, line = 0, pos = 0, tokens = None):
-        self.tok  : str = tok
-        self.line : int = line
-        self.pos  : int = pos
+        self.tok     : str = tok
+        self.line    : int = line
+        self.pos     : int = pos
+        self.maxline : int = 1000
 
         self.tokens : Tokens = tokens
 
-    def error(self, msg):
-        if self.tokens is None: print(f"error:", msg)
+    def __getlines(self):
+        if self.line <= 3:
+            return range(1, 6)
+
+        if self.line >= self.maxline - 2:
+            return range(self.maxline - 5, self.maxline)
+        
+        return range(self.line - 2, self.line + 3)
+    
+    def __message(self, type_, color, msg):
+        if self.tokens is None: print(color + f"{type_}{colorama.Style.RESET_ALL}:", msg)
         else:
-            strippedText = self.tokens.source[self.line - 1].lstrip()
-            diff = len(self.tokens.source[self.line - 1]) - len(strippedText)
-            print(
-                f"error (line {self.line - 1}):", msg, "\n  " + 
-                strippedText.rstrip() + "\n" + 
-                (" " * (self.pos - diff + 2)) + ("^" * len(self.tok))
-            )
+            maxlineLen = len(str(self.maxline))
+
+            print(color + f"{type_}{colorama.Style.RESET_ALL} (line {self.line - 1}, pos {self.pos}):", msg)
+
+            for line in self.__getlines():
+                if line == self.line - 1:
+                    print(
+                        f"{str(line).rjust(maxlineLen)} | " + self.tokens.source[line].rstrip() + "\n" + 
+                        (" " * maxlineLen) + " |" + (" " * (self.pos + 1)) + color + ("^" * len(self.tok)) + colorama.Style.RESET_ALL
+                    )
+
+                    continue
+                
+                print(f"{str(line).rjust(maxlineLen)} | " + self.tokens.source[line].rstrip())
+
+    def error(self, msg):
+        self.__message("error", colorama.Fore.RED, msg)
 
     def warning(self, msg):
-        strippedText = self.tokens.source[self.line - 1].lstrip()
-        diff = len(self.tokens.source[self.line - 1]) - len(strippedText)
-        print(
-            f"warning (line {self.line - 1}):", msg, "\n  " + 
-            strippedText.rstrip() + "\n" + 
-            (" " * (self.pos - diff + 2)) + ("^" * len(self.tok))
-        )
+        self.__message("warning", colorama.Fore.YELLOW,  msg)
 
 class Tokens:
     def __init__(self, source):
@@ -222,7 +236,9 @@ class Tokens:
         while i < len(tmp):
             if tmp[i].tok == "":
                 tmp.pop(i)
-            else: i += 1
+            else: 
+                tmp[i].maxline = line
+                i += 1
 
         tokens = []
         i = 0
@@ -921,10 +937,14 @@ class Compiler:
                 self.nextUnchecked = False
 
             if intVal == 0:
-                Token(
+                warnTok = Token(
                     " " * (valList[-1].pos - valList[0].pos + 1), 
                     valList[0].line, valList[0].pos, valList[0].tokens
-                ).warning('a 0-times "repeat" statement is being used')
+                )
+
+                warnTok.maxline = valList[0].maxline
+                
+                warnTok.warning('a 0-times "repeat" statement is being used')
 
                 return loop, objNames
             
