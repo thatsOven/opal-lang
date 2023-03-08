@@ -57,10 +57,10 @@ class Token:
         if self.line <= 3:
             return range(1, 6)
 
-        if self.line >= self.maxline - 2:
+        if self.line >= self.maxline - 3:
             return range(self.maxline - 5, self.maxline)
         
-        return range(self.line - 2, self.line + 3)
+        return range(self.line - 3, self.line + 2)
     
     def __message(self, type_, color, msg):
         if self.tokens is None: print(color + f"{type_}{colorama.Style.RESET_ALL}:", msg)
@@ -84,7 +84,7 @@ class Token:
         self.__message("error", colorama.Fore.RED, msg)
 
     def warning(self, msg):
-        self.__message("warning", colorama.Fore.YELLOW,  msg)
+        self.__message("warning", colorama.Fore.LIGHTYELLOW_EX,  msg)
 
 class Tokens:
     def __init__(self, source):
