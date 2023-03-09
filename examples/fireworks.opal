@@ -139,7 +139,9 @@ new class Firework {
     }
 
     new method update() {
-        if not this.exploded {
+        if this.exploded {
+            this.explosion.update();
+        } else {
             this.rocket.applyForce(GRAVITY);
             this.rocket.update();
 
@@ -147,10 +149,6 @@ new class Firework {
                 this.exploded = True;
                 this.explosion.explode(this.rocket.pos);
             }
-        }
-
-        if this.exploded {
-            this.explosion.update();
         }
     }
 
