@@ -1703,7 +1703,7 @@ class Compiler:
 
                 self.out += (" " * (embedTabs + tabs)) + Tokens(code).join() + "\n"
             else:
-                self.__error(f'unknown statement', next)
+                self.__error(f'unknown statement or identifier', next)
 
         return loop, objNames
 
