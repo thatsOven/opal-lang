@@ -157,10 +157,10 @@ new class Firework {
     }
 
     new method show() {
-        if not this.exploded {
-            this.rocket.show();
-        } else {
+        if this.exploded {
             this.explosion.show();
+        } else {
+            this.rocket.show();
         }
     }
 }
