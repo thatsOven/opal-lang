@@ -202,7 +202,10 @@ opal's exception handling follows Python's syntax, with different keywords.
 ```
 try {
 	# something that might give an error
-} catch Exception as e {
+} 
+# if a ValueError occurs, do nothing
+ignore ValueError;
+catch Exception as e {
 	# something went wrong
 } success {
 	# no error occurred

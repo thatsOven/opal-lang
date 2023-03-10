@@ -684,6 +684,11 @@ class Compiler:
     
         return fn
     
+    def __ignore(self, tokens : Tokens, tabs, loop, objNames):
+        _, val = self.getUntilNotInExpr(";", tokens, True, advance = False)
+        self.out += (" " * tabs) + Tokens([Token("except")] + val + [Token(":pass")]).join() + "\n"
+        return loop, objNames
+    
     def __unchecked(self, tokens : Tokens, tabs, loop, objNames):
         next = tokens.peek()
         if next.tok != ":":
@@ -1456,6 +1461,7 @@ class Compiler:
             "enum":                self.__enum,
             "dynamic":             self.__dynamic,
             "abstract":            self.__abstract,
+            "ignore":              self.__ignore
         }
 
     def __warning(self, msg, line):
