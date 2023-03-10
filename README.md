@@ -13,7 +13,9 @@ NOTE: due to how the compiler works, it might not detect some syntax errors.
 - `--dynamic`
 	- Ignores types in the compiled result. It gives a performance benefit, but it can break some programs that rely on type conversion.
 	- **Usage**: --dynamic
-
+- `--noeval`
+	- Avoids evaluating constant expressions when definining new variables
+	- **Usage**: --noeval
 # Runner
 if you are running Windows on your machine, and you'd like to double click on opal source to directly run it:
 

@@ -26,6 +26,7 @@ import re, os, sys, py_compile, colorama
 from importlib import import_module
 from timeit    import default_timer
 from pathlib   import Path
+from pydoc     import locate
 
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "=")
 
@@ -587,6 +588,15 @@ class Compiler:
                     self.out += (" " * tabs) + name.tok + f"=_OPAL_ASSERT_CLASSVAR_TYPE_({type_},{value})\n"
                 elif type_ in ("auto", "dynamic"): 
                     self.out += (" " * tabs) + name.tok + "=" + value + "\n"
+                elif self.eval:
+                    typeClass = locate(type_)
+
+                    try:
+                        evaluated = typeClass(eval(value))
+                    except:
+                        self.out += (" " * tabs) + name.tok + "=" + type_ + f"({value})\n"
+                    else:
+                        self.out += (" " * tabs) + name.tok + "=" + str(evaluated) + "\n"
                 else:
                     self.out += (" " * tabs) + name.tok + "=" + type_ + f"({value})\n"
             elif next.tok == ",": 
@@ -1414,6 +1424,7 @@ class Compiler:
 
         self.hadError  = False
         self.asDynamic = False
+        self.eval      = True
         self.__resetFlags()
 
         self.statementHandlers = {
@@ -1926,13 +1937,17 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.2.21 - thatsOven")
+        print("opal compiler v2023.3.10 - thatsOven")
     else:
         compiler = Compiler()
 
         if "--dynamic" in sys.argv:
             compiler.asDynamic = True
             sys.argv.remove("--dynamic")
+
+        if "--noeval" in sys.argv:
+            compiler.eval = False
+            sys.argv.remove("--noeval")
 
         if "--dir" in sys.argv:
             findDir = False
