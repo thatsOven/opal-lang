@@ -189,7 +189,7 @@ class Tokens:
         
         for ch in source:
             match ch:
-                case " ":
+                case " " | "\t":
                     if inString or inStringAlt: tmp[-1].tok += ch
                     else:        
                         tmp.append(Token("", line, pos + 1, self))
