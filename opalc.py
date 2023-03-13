@@ -766,7 +766,10 @@ class Compiler:
             next = imports.next()
             if next == "": break
 
-            name = next
+            if next.tok == "(":
+                name = tokens.peek()
+                self.getSameLevelParenthesis("(", ")", imports)
+            else: name = next
 
             if not imports.isntFinished():
                 self.newObj(objNames, name, "untyped")
@@ -788,6 +791,8 @@ class Compiler:
                 self.__error("invalid syntax: modules should be separated by commas", next)
 
         self.lastPackage = ""
+
+        imports.tokens = [x for x in imports.tokens if x.tok not in ("(", ")")]
 
         self.out += (" " * tabs) + "import " + imports.join() + "\n"
 
@@ -1937,7 +1942,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.3.10 - thatsOven")
+        print("opal compiler v2023.3.13 - thatsOven")
     else:
         compiler = Compiler()
 
