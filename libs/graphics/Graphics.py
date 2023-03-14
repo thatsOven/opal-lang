@@ -70,7 +70,7 @@ def _renderOutlineText(text, font, color, outlineColor, opx):
 
 
 class Graphics:
-    def __init__(self, resolution : Vector, framerate = 60, translated = Vector(0, 0), caption = "opal Graphics Window", backgroundColor = (0, 0, 0), showFps = False, fixedSize = True, font = pygame.font.get_default_font(), fontSize = 36, frequencySample = 48000, audioChannels = 1):
+    def __init__(self, resolution : Vector, framerate = 60, translated = Vector(0, 0), caption = "opal Graphics Window", backgroundColor = (0, 0, 0), showFps = False, fixedSize = True, font = pygame.font.get_default_font(), fontSize = 36, frequencySample = 48000, audioChannels = 1, pygameArgs = 0):
         pygame.mixer.pre_init(frequencySample, size = -16, channels = audioChannels)
         pygame.init()
         pygame.font.init()
@@ -88,9 +88,9 @@ class Graphics:
 
         self.resolution = resolution
         if fixedSize:
-            self.screen = pygame.display.set_mode(self.resolution.toList(2))
+            self.screen = pygame.display.set_mode(self.resolution.toList(2), pygameArgs)
         else:
-            self.screen = pygame.display.set_mode(self.resolution.toList(2), pygame.RESIZABLE)
+            self.screen = pygame.display.set_mode(self.resolution.toList(2), pygame.RESIZABLE | pygameArgs)
 
         self.font = pygame.font.SysFont(font, fontSize)
         self.__font = font
