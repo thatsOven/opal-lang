@@ -596,7 +596,14 @@ class Compiler:
                     except:
                         self.out += (" " * tabs) + name.tok + "=" + type_ + f"({value})\n"
                     else:
-                        self.out += (" " * tabs) + name.tok + "=" + str(evaluated) + "\n"
+                        code = name.tok + "=" + str(evaluated)
+
+                        try:
+                            exec(code)
+                        except:
+                            self.out += (" " * tabs) + name.tok + "=" + type_ + f"({value})\n"
+                        else:
+                            self.out += (" " * tabs) + code + "\n"
                 else:
                     self.out += (" " * tabs) + name.tok + "=" + type_ + f"({value})\n"
             elif next.tok == ",": 

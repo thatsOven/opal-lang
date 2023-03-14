@@ -92,6 +92,9 @@ class Graphics:
         else:
             self.screen = pygame.display.set_mode(self.resolution.toList(2), pygame.RESIZABLE | pygameArgs)
 
+        if bool(pygameArgs & pygame.OPENGL):
+            self.screen = pygame.Surface(self.resolution.toList(2))
+
         self.font = pygame.font.SysFont(font, fontSize)
         self.__font = font
 
