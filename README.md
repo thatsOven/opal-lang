@@ -387,3 +387,62 @@ opal supports decorators, using the same syntax as Python:
 @myDecorator;
 new function myFunction() {}
 ```
+# Precompiler
+## Comments
+Comments are only allowed at the beginning of a line, and are marked with the `#` symbol.
+## Statements
+### `$define`
+Defines a constant. Constants defined using `$define` are replaced before compilation using string manipulation, so they might create unwanted behaviors.
+```
+$define constantName constantContent
+```
+### `$pdefine`
+Defines a constant that is only visible to the precompiler.
+```
+$pdefine constantName constantContent
+```
+opal will automatically create a `HOME_DIR` "pconstant" that points to the base directory of the given file.
+### `$include`
+Includes a Python or opal file inside an opal file. Expects a `str` or path-like argument (it gets evaluated using Python's `eval`). Usage of the `os` module is allowed and recommended, especially to join directories and filenames.
+```
+$include os.path.join("HOME_DIR", "myFile.opal")
+```
+### `$includeDirectory`
+Includes every `.py` and `.opal` file in a given directory. Expects a `str` or path-like argument.
+```
+$includeDirectory os.path.join("HOME_DIR", "myFolder")
+```
+### `$macro`
+Defines a macro. A macro is a basic function that gets called with no overhead, since its body is copy-pasted into calls. Avoid using this too often since it can quickly increase the result file size. The body of the macro is anything between the `$macro` statement and an `$end` statement. Precompiler instructions cannot be used inside a macro definition. Macros can be defined with no arguments...
+```
+$macro sayHi
+	IO.out("Hi!\n");
+$end
+```
+... or with arguments. Arguments do not accept types and a default value cannot be set.
+```
+$macro add(a, b)
+	new int result = a + b;
+$end
+```
+Macros are called using the `$call` statement:
+```
+$call sayHi
+$call add(2, 4)
+```
+### `$nocompile`
+Tells the precompiler to directly transcribe code to the result until a `$restore` statement. In practice, it allows to use Python code inside opal. Python code in `$nocompile`-`$restore` blocks should be put on a "null indentation", for example:
+```
+if a != b {
+	if a < b {
+		$nocompile
+		
+for i in range(a, b):
+	if i > 2:
+		print(i)
+		
+		$restore
+	}
+}
+```
+This is needed because opal will add to the base indentation an inferred indentation, that is based on the code logic. This allows to directly import Python source files with no syntax errors.
