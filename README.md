@@ -14,7 +14,7 @@ NOTE: due to how the compiler works, it might not detect some syntax errors.
 	- Ignores types in the compiled result. It gives a performance benefit, but it can break some programs that rely on type conversion.
 	- **Usage**: --dynamic
 - `--noeval`
-	- Avoids evaluating constant expressions when definining new variables
+	- Avoids evaluating constant expressions when defining new variables
 	- **Usage**: --noeval
 # Runner
 if you are running Windows on your machine, and you'd like to double click on opal source to directly run it:
@@ -392,7 +392,7 @@ new function myFunction() {}
 Comments are only allowed at the beginning of a line, and are marked with the `#` symbol.
 ## Statements
 ### `$define`
-Defines a constant. Constants defined using `$define` are replaced before compilation using string manipulation, so they might create unwanted behaviors.
+Defines a constant. Constants defined using `$define` are replaced before compilation using regex, so they might create unwanted behaviors.
 ```
 $define constantName constantContent
 ```
