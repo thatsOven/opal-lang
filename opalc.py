@@ -1668,12 +1668,12 @@ class Compiler:
         self.__error('unbalanced parenthesis "' + openCh + closeCh + '"', lastParen)
         return buf
     
-    def __variablesHandler(self, tokens : Tokens, tabs, objNames):
+    def __variablesHandler(self, tokens : Tokens, tabs, objNames, autoCheck = True):
         names, expr = self.__dynamicStepOne(tokens, tabs)
         if names is None: return
 
         for name in names:
-            if name in objNames and objNames[name][0] == "auto":
+            if name in objNames and objNames[name][0] == "auto" and autoCheck:
                 self.out += (" " * tabs) + f"_OPAL_AUTOMATIC_TYPE_{name}=type({name})\n"
 
         self.out += (" " * tabs) + expr.join() + "\n"
@@ -1681,10 +1681,11 @@ class Compiler:
         for name in names:
             if name in objNames and objNames[name][1] != TypeCheckMode.NOCHECK:
                 if objNames[name][0] == "auto":
-                    self.out += (
-                        (" " * tabs) + f"{name}=_OPAL_AUTOMATIC_TYPE_{name}({name})\n" + 
-                        (" " * tabs) + "del _OPAL_AUTOMATIC_TYPE_" + name
-                    )
+                    if autoCheck:
+                        self.out += (
+                            (" " * tabs) + f"{name}=_OPAL_AUTOMATIC_TYPE_{name}({name})\n" + 
+                            (" " * tabs) + "del _OPAL_AUTOMATIC_TYPE_" + name + "\n"
+                        )
                 elif objNames[name][1] == TypeCheckMode.CHECK:
                     self.out += (" " * tabs) + f"{name}=_OPAL_ASSERT_CLASSVAR_TYPE_({objNames[name][0]},{name})\n"
                 elif objNames[name][1] == TypeCheckMode.FORCE:
@@ -1739,7 +1740,6 @@ class Compiler:
                 self.out += (" " * (embedTabs + tabs)) + Tokens(code).join() + "\n"
             else:
                 first  = next
-                isAuto = False
                 if next.tok == "<":
                     type_ = Tokens(self.getSameLevelParenthesis("<", ">", tokens)).join()
                     mode  = TypeCheckMode.CHECK
@@ -1752,12 +1752,8 @@ class Compiler:
                     mode  = TypeCheckMode.FORCE
                 else:
                     type_ = next.tok
-                    
                     if type_ == "dynamic":
                         mode = TypeCheckMode.NOCHECK
-                    elif type_ == "auto":
-                        autoTok = next
-                        isAuto  = True
                     else:
                         mode = TypeCheckMode.FORCE
                         
@@ -1766,19 +1762,16 @@ class Compiler:
                     self.__error('unknown statement or identifier', first)
                     continue
 
-                if isAuto:
-                    self.__error('cannot convert to "auto" using the arrow operator', autoTok)
-                    type_ = "dynamic"
-                    mode  = TypeCheckMode.NOCHECK
-
                 names, _ = self.__dynamicStepOne(tokens.copy(), tabs)
-                if names is None: continue
+                if names is None: 
+                    next.warning("cannot find any variables to convert. it is recommended to remove the type conversion")
+                    continue
 
                 for name in names:
                     if name in objNames:
                         objNames[name] = (type_, mode)
 
-                self.__variablesHandler(tokens, tabs, objNames)
+                self.__variablesHandler(tokens, tabs, objNames, False)
 
         return loop, objNames
 
