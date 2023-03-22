@@ -448,3 +448,25 @@ for i in range(a, b):
 }
 ```
 This is needed because opal will add to the base indentation an inferred indentation, that is based on the code logic. This allows to directly import Python source files with no syntax errors.
+
+# Operators
+Since opal directly passes expressions to Python, that is, it doesn't parse them, operators are almost identical to Python's, with
+a few additions:
+- `!`: Equivalent to Python's `not`. If used at the beginning of a line with a variable name, it will invert the state of that variable:
+```
+!variable;
+
+# is equivalent to:
+# variable = !variable;
+```
+
+- `||`: Equivalent to Python's `or`;
+- `&&`: Equivalent to Python's `and`;
+- `?`: It's used for debugging purposes. It prints the given expression and returns it:
+```
+myFunction(a, ?(b), c); 
+# the content of b will be printed
+
+?c; 
+# the content of c will be printed
+```

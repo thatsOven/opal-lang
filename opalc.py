@@ -460,6 +460,8 @@ class Compiler:
                             mode  = TypeCheckMode.CHECK
                         elif next.tok == "auto":
                             self.__error('"auto" cannot be used as a parameter type', next)
+                            type_ = "dynamic"
+                            mode  = TypeCheckMode.NOCHECK
                         else:
                             type_ = next.tok
                             mode  = TypeCheckMode.FORCE
