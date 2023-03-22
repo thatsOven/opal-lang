@@ -56,7 +56,7 @@ class Token:
 
     def __getlines(self):
         if self.line <= 3:
-            return range(1, 6)
+            return range(1, min(6, self.maxline))
 
         if self.line >= self.maxline - 3:
             return range(self.maxline - 5, self.maxline)
@@ -443,12 +443,31 @@ class Compiler:
                     next = args.peek()
                     if next is not None and next.tok == ":":
                         args.next()
-                        next  = args.next()
-                        type_ = next.tok
+                        next = args.next()
+
+                        if next.tok == "(":
+                            type_ = Tokens(self.getSameLevelParenthesis("(", ")", args)).join()
+                            mode  = TypeCheckMode.FORCE
+                        elif next.tok == "<":
+                            args.tokens.pop(args.pos - 1)
+                            args.pos -= 1
+
+                            type_ = Tokens(self.getSameLevelParenthesis("<", ">", args)).join()
+
+                            args.tokens.pop(args.pos - 1)
+                            args.pos -= 1
+                            
+                            mode  = TypeCheckMode.CHECK
+                        elif next.tok == "auto":
+                            self.__error('"auto" cannot be used as a parameter type', next)
+                        else:
+                            type_ = next.tok
+                            mode  = TypeCheckMode.FORCE
                     else:
                         type_ = "dynamic"
+                        mode  = TypeCheckMode.NOCHECK
 
-                    internalVars.append((argName, type_))
+                    internalVars.append((argName, type_, mode))
 
                     if not args.isntFinished(): break
 
@@ -538,7 +557,7 @@ class Compiler:
 
         intObjs = objNames.copy()
         for var in internalVars:
-            intObjs[var[0]] = (var[1], TypeCheckMode.NOCHECK if var[1] == "dynamic" else TypeCheckMode.CHECK)
+            intObjs[var[0]] = (var[1], var[2])
 
         self.__compiler(block, tabs + 1, loop, intObjs)
         return loop, objNames
