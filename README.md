@@ -303,15 +303,6 @@ main() {
 	# function can be defined
 }
 ```
-### `dynamic`
-The `dynamic` statements is used to convert variables to dynamic typing before an assignment, like this:
-```
-new <Vector> myVector = Vector(2, 3);
-# type of myVector is Vector
-
-dynamic <- myVector += 2;
-# type of myVector is dynamic
-```
 ### `unchecked`
 The `unchecked` flag is used to ignore typing on an assignment or skip checks on other statements. Statements to which the `unchecked` flag can be applied are:
 - `repeat`: skips the conversion to an absolute int;
@@ -470,3 +461,18 @@ myFunction(a, ?(b), c);
 ?c; 
 # the content of c will be printed
 ```
+- `<-`: It's used to convert variables to a type during an assignment:
+```
+new int a = 2;
+# type of a is int
+
+float <- a = 3;
+# type of a is float
+
+<str> <- a = str(a);
+# type of a is str, and will now only be checked instead of forced
+
+dynamic <- a = Vector(2, 3);
+# type of a is dynamic
+```
+Typing used with the arrow operator follows the same rules as types in the new statement.

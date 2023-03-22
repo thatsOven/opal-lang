@@ -1429,23 +1429,6 @@ class Compiler:
             names.append(Tokens(name).join())
         
         return names, expr
-            
-    def __dynamic(self, tokens : Tokens, tabs, loop, objNames):
-        next = tokens.next()
-        if next.tok == "<-":
-            names, expr = self.__dynamicStepOne(tokens, tabs)
-            if names is None: return loop, objNames
-
-            for name in names:
-                if name in objNames:
-                    objNames[name] = ("dynamic", TypeCheckMode.NOCHECK)
-
-            self.out += (" " * tabs) + expr.join() + "\n"
-
-            return loop, objNames
-        
-        self.__error('invalid syntax: expected "<-" after "dynamic"', next)
-        return loop, objNames
     
     def __init__(self):
         self.out = ""
@@ -1503,7 +1486,6 @@ class Compiler:
             "repeat":              self.__repeat,
             "match":               self.__match,
             "enum":                self.__enum,
-            "dynamic":             self.__dynamic,
             "abstract":            self.__abstract,
             "ignore":              self.__ignore
         }
@@ -1686,6 +1668,28 @@ class Compiler:
         self.__error('unbalanced parenthesis "' + openCh + closeCh + '"', lastParen)
         return buf
     
+    def __variablesHandler(self, tokens : Tokens, tabs, objNames):
+        names, expr = self.__dynamicStepOne(tokens, tabs)
+        if names is None: return
+
+        for name in names:
+            if name in objNames and objNames[name][0] == "auto":
+                self.out += (" " * tabs) + f"_OPAL_AUTOMATIC_TYPE_{name}=type({name})\n"
+
+        self.out += (" " * tabs) + expr.join() + "\n"
+
+        for name in names:
+            if name in objNames and objNames[name][1] != TypeCheckMode.NOCHECK:
+                if objNames[name][0] == "auto":
+                    self.out += (
+                        (" " * tabs) + f"{name}=_OPAL_AUTOMATIC_TYPE_{name}({name})\n" + 
+                        (" " * tabs) + "del _OPAL_AUTOMATIC_TYPE_" + name
+                    )
+                elif objNames[name][1] == TypeCheckMode.CHECK:
+                    self.out += (" " * tabs) + f"{name}=_OPAL_ASSERT_CLASSVAR_TYPE_({objNames[name][0]},{name})\n"
+                elif objNames[name][1] == TypeCheckMode.FORCE:
+                    self.out += (" " * tabs) + f"{name}={objNames[name][0]}({name})\n"
+    
     def __compiler(self, tokens : Tokens, tabs, loop, objNames):  
         while tokens.isntFinished():
             next = tokens.next()
@@ -1698,26 +1702,7 @@ class Compiler:
                 loop, objNames = self.statementHandlers[next.tok](tokens, tabs, loop, objNames)
             elif next.tok in objNames:
                 tokens.pos -= 1
-                names, expr = self.__dynamicStepOne(tokens, tabs)
-                if names is None: continue
-
-                for name in names:
-                    if name in objNames and objNames[name][0] == "auto":
-                        self.out += (" " * tabs) + f"_OPAL_AUTOMATIC_TYPE_{name}=type({name})\n"
-
-                self.out += (" " * tabs) + expr.join() + "\n"
-
-                for name in names:
-                    if name in objNames and objNames[name][1] != TypeCheckMode.NOCHECK:
-                        if objNames[name][0] == "auto":
-                            self.out += (
-                                (" " * tabs) + f"{name}=_OPAL_AUTOMATIC_TYPE_{name}({name})\n" + 
-                                (" " * tabs) + "del _OPAL_AUTOMATIC_TYPE_" + name
-                            )
-                        elif objNames[name][1] == TypeCheckMode.CHECK:
-                            self.out += (" " * tabs) + f"{name}=_OPAL_ASSERT_CLASSVAR_TYPE_({objNames[name][0]},{name})\n"
-                        elif objNames[name][1] == TypeCheckMode.FORCE:
-                            self.out += (" " * tabs) + f"{name}={objNames[name][0]}({name})\n"
+                self.__variablesHandler(tokens, tabs, objNames)
             elif next.tok in self.useIdentifiers:
                 if self.useIdentifiers[next.tok] == "::py":
                     next = tokens.next()
@@ -1753,7 +1738,47 @@ class Compiler:
 
                 self.out += (" " * (embedTabs + tabs)) + Tokens(code).join() + "\n"
             else:
-                self.__error(f'unknown statement or identifier', next)
+                first  = next
+                isAuto = False
+                if next.tok == "<":
+                    type_ = Tokens(self.getSameLevelParenthesis("<", ">", tokens)).join()
+                    mode  = TypeCheckMode.CHECK
+
+                    if self.flags["OPAL_ASSERT_CLASSVAR"]:
+                        self.out = "from libs.std import _OPAL_ASSERT_CLASSVAR_TYPE_\n" + self.out
+                        self.flags["OPAL_ASSERT_CLASSVAR"] = True
+                elif next.tok == "(":
+                    type_ = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
+                    mode  = TypeCheckMode.FORCE
+                else:
+                    type_ = next.tok
+                    
+                    if type_ == "dynamic":
+                        mode = TypeCheckMode.NOCHECK
+                    elif type_ == "auto":
+                        autoTok = next
+                        isAuto  = True
+                    else:
+                        mode = TypeCheckMode.FORCE
+                        
+                next = tokens.next()
+                if next.tok != "<-":
+                    self.__error('unknown statement or identifier', first)
+                    continue
+
+                if isAuto:
+                    self.__error('cannot convert to "auto" using the arrow operator', autoTok)
+                    type_ = "dynamic"
+                    mode  = TypeCheckMode.NOCHECK
+
+                names, _ = self.__dynamicStepOne(tokens.copy(), tabs)
+                if names is None: continue
+
+                for name in names:
+                    if name in objNames:
+                        objNames[name] = (type_, mode)
+
+                self.__variablesHandler(tokens, tabs, objNames)
 
         return loop, objNames
 
