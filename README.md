@@ -73,7 +73,9 @@ new function functionName(arg0, arg1) {
 ```
 The types of a function's parameter can be specified...
 ```
-new function functionName(arg0 : int, arg1 : str) {
+# typing in function parameters follow the same rules as 
+# types in the new statement
+new function functionName(arg0 : int, arg1 : <str>) {
 	# your code here
 }
 ```
