@@ -437,7 +437,7 @@ class Compiler:
                     argName = next.tok
 
                     if not args.isntFinished():
-                        internalVars.append((argName, "dynamic"))
+                        internalVars.append((argName, "dynamic", TypeCheckMode.NOCHECK))
                         break
                     
                     next = args.peek()
