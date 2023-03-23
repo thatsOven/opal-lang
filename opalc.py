@@ -458,14 +458,15 @@ class Compiler:
                             args.pos -= 1
                             
                             mode  = TypeCheckMode.CHECK
-                        elif next.tok == "auto":
-                            self.__error('"auto" cannot be used as a parameter type', next)
-                            type_ = "dynamic"
-                            mode  = TypeCheckMode.NOCHECK
                         else:
                             type_ = next.tok
                             mode  = TypeCheckMode.FORCE
                     else:
+                        type_ = "dynamic"
+                        mode  = TypeCheckMode.NOCHECK
+
+                    if type_ == "auto":
+                        self.__error('"auto" cannot be used as a parameter type', next)
                         type_ = "dynamic"
                         mode  = TypeCheckMode.NOCHECK
 
@@ -605,10 +606,10 @@ class Compiler:
                 next, value = self.getUntilNotInExpr(",", variablesDef, True, False)
                 value = Tokens(value).join()
 
-                if mode == TypeCheckMode.CHECK:
-                    self.out += (" " * tabs) + name.tok + f"=_OPAL_ASSERT_CLASSVAR_TYPE_({type_},{value})\n"
-                elif type_ in ("auto", "dynamic"): 
+                if type_ in ("auto", "dynamic"): 
                     self.out += (" " * tabs) + name.tok + "=" + value + "\n"
+                elif mode == TypeCheckMode.CHECK:
+                    self.out += (" " * tabs) + name.tok + f"=_OPAL_ASSERT_CLASSVAR_TYPE_({type_},{value})\n"
                 elif self.eval:
                     typeClass = locate(type_)
 
@@ -831,7 +832,7 @@ class Compiler:
             _, var = self.getUntilNotInExpr(";", tokens, True, advance = False)
             strVar = Tokens(var).join()
 
-            self.out += (" " * tabs) + strVar + op +"=1\n"
+            self.out += (" " * tabs) + strVar + op + "=1\n"
 
             return loop, objNames
             
@@ -1515,7 +1516,7 @@ class Compiler:
             return
 
         if self.asDynamic and type_ != "untyped":
-            objNames[nameToken.tok] = ("dynamic", checkPolicy)
+            objNames[nameToken.tok] = ("dynamic", TypeCheckMode.NOCHECK)
         else: objNames[nameToken.tok] = (type_, checkPolicy)
 
     def newIdentifier(self, nameToken : Token, translatesTo):
@@ -1682,10 +1683,12 @@ class Compiler:
             if name in objNames and objNames[name][1] != TypeCheckMode.NOCHECK:
                 if objNames[name][0] == "auto":
                     if autoCheck:
-                        self.out += (
-                            (" " * tabs) + f"{name}=_OPAL_AUTOMATIC_TYPE_{name}({name})\n" + 
-                            (" " * tabs) + "del _OPAL_AUTOMATIC_TYPE_" + name + "\n"
-                        )
+                        if objNames[name][1] == TypeCheckMode.FORCE:
+                            self.out += (" " * tabs) + f"{name}=_OPAL_AUTOMATIC_TYPE_{name}({name})\n"
+                        else:
+                            self.out += (" " * tabs) + f"{name}=_OPAL_ASSERT_CLASSVAR_TYPE_(_OPAL_AUTOMATIC_TYPE_{name},{name})\n"
+
+                        self.out += (" " * tabs) + "del _OPAL_AUTOMATIC_TYPE_" + name + "\n"
                 elif objNames[name][1] == TypeCheckMode.CHECK:
                     self.out += (" " * tabs) + f"{name}=_OPAL_ASSERT_CLASSVAR_TYPE_({objNames[name][0]},{name})\n"
                 elif objNames[name][1] == TypeCheckMode.FORCE:
