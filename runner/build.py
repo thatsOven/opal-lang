@@ -1,13 +1,13 @@
-from PyInstaller.__main__ import run
 from distutils.dir_util   import copy_tree
-from shutil               import rmtree, copy
+from shutil               import rmtree
 from pathlib              import Path
-from os                   import chdir, path, getcwd, remove, mkdir
+from os                   import chdir, path, getcwd, remove
+from ianthe               import Ianthe
 
 spath = str(Path(__file__).parent.absolute())
 chdir(spath)
 
-with open("run.py", "w") as script:
+with open("opalrun.py", "w") as script:
     script.write("from subprocess import run\nfrom sys import argv\n")
     chdir("..")
     p = path.join(getcwd(), 'opalc.py').replace("\\", "\\\\")
@@ -15,25 +15,17 @@ with open("run.py", "w") as script:
 
 chdir(spath)
 
-mkdir("tmp")
-copy("icon.ico", path.join("tmp", "icon.ico"))
+ianthe = Ianthe()
+ianthe.config = {
+    "source"     : "opalrun.py",
+    "destination": "run",
+    "onefile"    : True,
+    "icon"       : "icon.ico"
+}
 
-run((
-    "--onefile",
-    "--icon=icon.ico",
-    "--workpath=tmp",
-    "--specpath=tmp",
-    "--distpath=run",
-    "--clean",
-    "run.py"
-))
+ianthe.execute()
 
-remove("run.py")
-
-rmtree("tmp")
-
-if path.exists("__pycache__"):
-    rmtree("__pycache__")
+remove("opalrun.py")
 
 chdir("..")
 copy_tree(path.join(spath, "run"), getcwd())
