@@ -574,8 +574,11 @@ class Compiler:
                 self.flags["OPAL_ASSERT_CLASSVAR"] = True
 
             type_ = Tokens(self.getSameLevelParenthesis("<", ">", tokens)).join()
-
             mode = TypeCheckMode.CHECK
+
+            if type_ == "dynamic":
+                next.warning('"dynamic" cannot be a checked type. remove the angular brackets')
+                mode = TypeCheckMode.NOCHECK
         else:
             if next.tok == "(":
                 type_ = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
@@ -606,7 +609,7 @@ class Compiler:
                 next, value = self.getUntilNotInExpr(",", variablesDef, True, False)
                 value = Tokens(value).join()
 
-                if type_ in ("auto", "dynamic"): 
+                if type_ in ("auto", "dynamic") or mode == TypeCheckMode.NOCHECK: 
                     self.out += (" " * tabs) + name.tok + "=" + value + "\n"
                 elif mode == TypeCheckMode.CHECK:
                     self.out += (" " * tabs) + name.tok + f"=_OPAL_ASSERT_CLASSVAR_TYPE_({type_},{value})\n"
