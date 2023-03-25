@@ -21,7 +21,7 @@ if you are running Windows on your machine, and you'd like to double click on op
 
 1) add the opal folder to `PATH`
 2) build the runner using `runner\build.py`
-3) set `run.exe` as the default way of opening `.opal` files
+3) set `opalrun.exe` as the default way of opening `.opal` files
 
 # Hello World!
 ```
@@ -57,9 +57,10 @@ new str name;
 # var can accept any type
 new dynamic var;
 
-# when values cannot be converted to the specified type
-# by directly using the type name, the type name should
-# be put in angular brackets
+# putting type names in angular brackets tells the compiler
+# not to force that type, and only check if assigments of the given
+# type are made. it is recommended to use angular brackets whenever
+# defining a variable that contains instances of a custom defined class
 new <Vector> aVector = Vector(2, 3);
 ```
 
