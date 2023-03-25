@@ -324,7 +324,7 @@ class Graphics:
         if surf is None:
             surf = self.screen
 
-        circleSurf = pygame.Surface((radius * 2, radius * 2))
+        circleSurf = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
         pygame.draw.circle(circleSurf, color, (radius, radius), radius, thickness)
         circleSurf.set_alpha(alpha)
         surf.blit(circleSurf, (center - radius + self.center).toList(2))
