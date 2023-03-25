@@ -33,11 +33,6 @@ class Vector:
     def __repr__(self):
         return str((self.x, self.y, self.z))
 
-    def __del__(self):
-        del self.x
-        del self.y
-        del self.z
-
     def copy(self):
         return Vector(self.x, self.y, self.z)
 

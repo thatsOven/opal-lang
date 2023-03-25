@@ -49,9 +49,6 @@ class char:
     def __repr__(self):
         return self._value
 
-    def __del__(self):
-        del self._value
-
     def __add__(self, other):
         if type(other) == int:
             return char(self.toInt() + other)

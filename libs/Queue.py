@@ -51,6 +51,3 @@ class Queue:
 
     def __str__(self):
         return str(self.__array)
-
-    def __del__(self):
-        del self.__array
