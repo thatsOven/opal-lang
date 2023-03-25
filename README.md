@@ -21,7 +21,7 @@ if you are running Windows on your machine, and you'd like to double click on op
 
 1) add the opal folder to `PATH`
 2) build the runner using `runner\build.py`
-3) set `run.exe` as the default way of opening `.opal` files
+3) set `opalrun.exe` as the default way of opening `.opal` files
 
 # Hello World!
 ```
