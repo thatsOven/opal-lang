@@ -399,12 +399,12 @@ opal will automatically create a `HOME_DIR` "pconstant" (and variable) that poin
 ### `$include`
 Includes a Python or opal file inside an opal file. Expects a `str` or path-like argument (it gets evaluated using Python's `eval`). Usage of the `os` module is allowed and recommended, especially to join directories and filenames.
 ```
-$include os.path.join("HOME_DIR", "myFile.opal")
+$include os.path.join(HOME_DIR, "myFile.opal")
 ```
 ### `$includeDirectory`
 Includes every `.py` and `.opal` file in a given directory. Expects a `str` or path-like argument.
 ```
-$includeDirectory os.path.join("HOME_DIR", "myFolder")
+$includeDirectory os.path.join(HOME_DIR, "myFolder")
 ```
 ### `$macro`
 Defines a macro. A macro is a basic function that gets called with no overhead, since its body is copy-pasted into calls. Avoid using this too often since it can quickly increase the result file size. The body of the macro is anything between the `$macro` statement and an `$end` statement. Precompiler instructions cannot be used inside a macro definition. Macros can be defined with no arguments...
