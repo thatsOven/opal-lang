@@ -31,11 +31,8 @@ from pydoc     import locate
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "=")
 
 class NameStack:
-    def __init__(self, array = None):
-        if array is None:
-            self.array = []
-        else:
-            self.array = array
+    def __init__(self):
+        self.array = []
 
     def push(self, item):
         self.array.append(item)
