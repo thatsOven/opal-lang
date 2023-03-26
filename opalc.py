@@ -22,13 +22,49 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import re, os, sys, py_compile, colorama
+import os, sys, py_compile, colorama
 from importlib import import_module
 from timeit    import default_timer
 from pathlib   import Path
 from pydoc     import locate
 
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "=")
+
+class NameStack:
+    def __init__(self, array = None):
+        if array is None:
+            self.array = []
+        else:
+            self.array = array
+
+    def push(self, item):
+        self.array.append(item)
+
+    def pop(self):
+        self.array.pop()
+
+    def getCurrentLocation(self):
+        array = self.array.copy()
+        curr  = array.pop()
+        names = [curr]
+
+        while curr[1] != "file":
+            curr = array.pop()
+            names.append(curr)
+
+        out = "in "
+        for name in reversed(names):
+            match name[1]:
+                case "file":
+                    out += os.path.basename(name[0]) + ": "
+                case "fn":
+                    out += name[0] + "()."
+                case "macro":
+                    out += f"($call {name[0]})."
+                case _:
+                    out += name[0] + "."
+
+        return out.strip()[:-1]
 
 class GenericLoop: pass
 
@@ -63,12 +99,12 @@ class Token:
         
         return range(self.line - 3, self.line + 2)
     
-    def __message(self, type_, color, msg):
-        if self.tokens is None: print(color + f"{type_}{colorama.Style.RESET_ALL}:", msg)
+    def __message(self, type_, color, msg, location):
+        if self.tokens is None: print(color + f"{type_}{colorama.Style.RESET_ALL} {location}:", msg)
         else:
             maxlineLen = len(str(self.maxline))
 
-            print(color + f"{type_}{colorama.Style.RESET_ALL} (line {self.line - 1}, pos {self.pos}):", msg)
+            print(color + f"{type_}{colorama.Style.RESET_ALL} ({location}, line {self.line - 1}, pos {self.pos}):", msg)
 
             for line in self.__getlines():
                 if line == self.line - 1:
@@ -81,11 +117,11 @@ class Token:
                 
                 print(f"{str(line).rjust(maxlineLen)} | " + self.tokens.source[line].rstrip())
 
-    def error(self, msg):
-        self.__message("error", colorama.Fore.RED, msg)
+    def error(self, msg, location):
+        self.__message("error", colorama.Fore.RED, msg, location)
 
-    def warning(self, msg):
-        self.__message("warning", colorama.Fore.LIGHTYELLOW_EX,  msg)
+    def warning(self, msg, location):
+        self.__message("warning", colorama.Fore.LIGHTYELLOW_EX, msg, location)
 
 class Tokens:
     def __init__(self, source):
@@ -182,22 +218,39 @@ class Tokens:
     def tokenize(self, source):
         line = 1
         pos  = 0
-        tmp         = [Token("", line, pos, self)]
-        inString    = False
-        inStringAlt = False
-        lastSym     = False
+        tmp           = [Token("", line, pos, self)]
+        inLineComment = False
+        inString      = False
+        inStringAlt   = False
+        lastSym       = False
         
         for ch in source:
+            if inLineComment:
+                if ch == "\n":
+                    inLineComment = False
+                    line += 1
+                    pos   = 0
+                    tmp.append(Token("", line, pos, self))
+                    continue
+                
+                pos += 1
+                continue
+
             match ch:
                 case " " | "\t":
                     if inString or inStringAlt: tmp[-1].tok += ch
                     else:        
                         tmp.append(Token("", line, pos + 1, self))
-                case "\n":
+                case "#":
                     if inString or inStringAlt: tmp[-1].tok += ch
                     else:
-                        line += 1
-                        pos = 0
+                        inLineComment = True
+                case "\n":
+                    line += 1
+                    pos   = 0
+
+                    if inString or inStringAlt: tmp[-1].tok += ch
+                    else:
                         tmp.append(Token("", line, pos, self))
                         continue
                 case '"':
@@ -277,7 +330,7 @@ class Tokens:
                             next = tmp[i]
                             i += 1
 
-                            if tmp[i].tok == "=":
+                            if i < len(tmp) and tmp[i].tok == "=":
                                 token.tok += next.tok + tmp[i].tok
                                 i += 1
                             else: 
@@ -291,7 +344,7 @@ class Tokens:
                             next = tmp[i]
                             i += 1
 
-                            if tmp[i].tok == "=":
+                            if i < len(tmp) and tmp[i].tok == "=":
                                 token.tok += next.tok + tmp[i].tok
                                 i += 1
                             else: 
@@ -305,7 +358,7 @@ class Tokens:
                             next = tmp[i]
                             i += 1
 
-                            if tmp[i].tok == "=":
+                            if i < len(tmp) and tmp[i].tok == "=":
                                 token.tok += next.tok + tmp[i].tok
                                 i += 1
                             else: 
@@ -319,7 +372,7 @@ class Tokens:
                             next = tmp[i]
                             i += 1
 
-                            if tmp[i].tok == "=":
+                            if i < len(tmp) and tmp[i].tok == "=":
                                 token.tok += next.tok + tmp[i].tok
                                 i += 1
                             else: 
@@ -555,14 +608,18 @@ class Compiler:
         block = Tokens(block)
         
         if translates == "class":
+            self.__nameStack.push((name.tok, "class"))
             self.__compiler(block, tabs + 1, loop, objNames)
+            self.__nameStack.pop()
             return loop, objNames
 
         intObjs = objNames.copy()
         for var in internalVars:
             intObjs[var[0]] = (var[1], var[2])
 
+        self.__nameStack.push((name.tok, "fn"))
         self.__compiler(block, tabs + 1, loop, intObjs)
+        self.__nameStack.pop()
         return loop, objNames
     
     def __newVar(self, tokens : Tokens, tabs, loop, objNames):
@@ -577,7 +634,7 @@ class Compiler:
             mode = TypeCheckMode.CHECK
 
             if type_ == "dynamic":
-                next.warning('"dynamic" cannot be a checked type. remove the angular brackets')
+                self.__warning('"dynamic" cannot be a checked type. remove the angular brackets', next)
                 mode = TypeCheckMode.NOCHECK
         else:
             if next.tok == "(":
@@ -661,7 +718,7 @@ class Compiler:
     def __quit(self, tokens : Tokens, tabs, loop, objNames):
         next = tokens.peek()
         if next.tok != ";":
-            next.warning(f'expecting ";" after "quit". ignoring')
+            self.__warning('expecting ";" after "quit". ignoring', next)
         else: tokens.next()
 
         self.out += (" " * tabs) + "quit()\n"
@@ -685,7 +742,7 @@ class Compiler:
         keyw = tokens.last()
         next = tokens.peek()
         if next.tok != ";":
-            next.warning(f'expecting ";" after "break". ignoring')
+            self.__warning('expecting ";" after "break". ignoring', next)
         else: tokens.next()
 
         if loop is None:
@@ -701,9 +758,9 @@ class Compiler:
         next = tokens.peek()
 
         if next is None:
-            keyw.warning(f'expecting ";" after "continue". ignoring')
+            self.__warning('expecting ";" after "continue". ignoring', keyw)
         elif next.tok != ";":
-            next.warning(f'expecting ";" after "continue". ignoring')
+            self.__warning('expecting ";" after "continue". ignoring', next)
         else: tokens.next()
 
         if loop is None:
@@ -734,7 +791,7 @@ class Compiler:
     def __unchecked(self, tokens : Tokens, tabs, loop, objNames):
         next = tokens.peek()
         if next.tok != ":":
-            next.warning(f'expecting ":" after "unchecked". ignoring')
+            self.__warning('expecting ":" after "unchecked". ignoring', next)
         else: tokens.next()
 
         self.nextUnchecked = True
@@ -744,7 +801,7 @@ class Compiler:
     def __abstract(self, tokens : Tokens, tabs, loop, objNames):
         next = tokens.peek()
         if next.tok != ":":
-            next.warning(f'expecting ":" after "abstract". ignoring')
+            self.__warning('expecting ":" after "abstract". ignoring', next)
         else: tokens.next()
 
         self.nextAbstract = True
@@ -859,12 +916,12 @@ class Compiler:
 
         peek = tokens.peek()
         if peek is None or peek.tok != ";":
-            next.warning(f'expecting ";" after use identifier definition. ignoring')
+            self.__warning('expecting ";" after use identifier definition. ignoring', next)
         else: tokens.next()
 
         return loop, objNames
     
-    def __simpleBlock(self, keyw, kwname):
+    def __simpleBlock(self, keyw, kwname, push = None):
         def fn(tokens : Tokens, tabs, loop, objNames):
             self.checkDirectNext("{", f'"{kwname}"', tokens)
             block = self.getSameLevelParenthesis("{", "}", tokens)
@@ -875,13 +932,19 @@ class Compiler:
                 self.out += ":pass\n"
             else: 
                 self.out += ":\n"
-                loop, objNames = self.__compiler(Tokens(block), tabs + 1, loop, objNames)
+
+                if push is None:
+                    loop, objNames = self.__compiler(Tokens(block), tabs + 1, loop, objNames)
+                else:
+                    self.__nameStack.push(push)
+                    loop, objNames = self.__compiler(Tokens(block), tabs + 1, loop, objNames)
+                    self.__nameStack.pop()
 
             return loop, objNames
         
         return fn
     
-    def __block(self, keyw, inLoop = None, content = None, after = None):
+    def __block(self, keyw, inLoop = None, content = None, after = None, push = None):
         def fn(tokens : Tokens, tabs, loop, objNames):
             loopNotDef = inLoop is None
             if loopNotDef: 
@@ -906,7 +969,13 @@ class Compiler:
                  
                 self.out += ":\n"
 
-            tmp, objNames = self.__compiler(Tokens(block), tabs + 1, internalLoop, objNames)
+            if push is None:
+                tmp, objNames = self.__compiler(Tokens(block), tabs + 1, internalLoop, objNames)
+            else:
+                self.__nameStack.push(push)
+                tmp, objNames = self.__compiler(Tokens(block), tabs + 1, internalLoop, objNames)
+                self.__nameStack.pop()
+
             if loopNotDef: loop = tmp
 
             return loop, objNames
@@ -921,7 +990,7 @@ class Compiler:
             tokens.next()
             next = tokens.next()
             if next.tok != ")":
-                next.warning("invalid syntax: brackets should be closed. ignoring")
+                self.__warning("invalid syntax: brackets should be closed. ignoring", next)
 
             if self.flags["mainfn"]:
                 self.__error("main function can only be defined once", keyw)
@@ -929,7 +998,7 @@ class Compiler:
             
             self.flags["mainfn"] = True
 
-            return self.__simpleBlock("def _OPAL_MAIN_FUNCTION_()", "main()")(tokens, tabs, loop, objNames)
+            return self.__simpleBlock("def _OPAL_MAIN_FUNCTION_()", "main()", ("main", "fn"))(tokens, tabs, loop, objNames)
         
         return self.__simpleBlock("if __name__=='__main__'", "main")(tokens, tabs, loop, objNames)
     
@@ -942,7 +1011,7 @@ class Compiler:
             self.__error('invalid syntax: expecting "{" after namespace definition')
             return loop, objNames
 
-        return self.__block("class", content = [next])(tokens, tabs, loop, objNames)
+        return self.__block("class", content = [next], push = (next.tok, "class"))(tokens, tabs, loop, objNames)
     
     def __do(self, tokens : Tokens, tabs, loop, objNames):
         peek = tokens.peek()
@@ -953,7 +1022,7 @@ class Compiler:
 
             next = tokens.peek()
             if next.tok != "while":
-                next.warning('invalid syntax: expecting "while" after a do-while loop. ignoring')
+                self.__warning('invalid syntax: expecting "while" after a do-while loop. ignoring', next)
             else: tokens.next()
 
             _, condition = self.getUntilNotInExpr(";", tokens, True, advance = False)
@@ -996,7 +1065,7 @@ class Compiler:
 
                 warnTok.maxline = valList[0].maxline
                 
-                warnTok.warning('a 0-times "repeat" statement is being used')
+                self.__warning('a 0-times "repeat" statement is being used', warnTok)
 
                 return loop, objNames
             
@@ -1124,12 +1193,22 @@ class Compiler:
 
         return loop, objNames
     
+    @classmethod
+    def __getType(self, type_):
+        match type_:
+            case "getter":
+                return "get"
+            case "setter":
+                return "set"
+            case "deleter":
+                return "delete"
+    
     def __modifier(self, type_, name = None):
         def fn(tokens : Tokens, tabs, loop, objNames):
             if name is None:
                 next = tokens.peek()
                 if next.tok != "<":
-                    next.warning(f'expecting "<" after {type_} outside of a "property" statement. ignoring')
+                    self.__warning(f'expecting "<" after {type_} outside of a "property" statement. ignoring', next)
                     localName = next
                 else: 
                     tokens.next()
@@ -1153,7 +1232,7 @@ class Compiler:
                     valName = self.getSameLevelParenthesis("(", ")", tokens)
 
                     if len(valName) > 1:
-                        valName[0].warning('only one argument should be passed to a setter. using first')
+                        self.__warning('only one argument should be passed to a setter. using first', valName[0])
                 else:
                     valName = [Token("value")]
 
@@ -1178,7 +1257,13 @@ class Compiler:
             
             self.out += "\n"
             
+            if name is None:
+                self.__nameStack.push((f"{self.__getType(type_)}<{localName}>", "fn"))
+            else:
+                self.__nameStack.push((self.__getType(type_), "fn"))
+
             self.__compiler(Tokens(block), tabs + 1, loop, intObjs)
+            self.__nameStack.pop()
             return loop, objNames
         
         return fn
@@ -1208,7 +1293,7 @@ class Compiler:
         block = self.getSameLevelParenthesis("{", "}", tokens)
 
         if len(value) > 1:
-            value[0].warning('property name should contain only one token. using first')
+            self.__warning('property name should contain only one token. using first', value[0])
         
         self.newObj(objNames, value[0], "untyped")
 
@@ -1217,7 +1302,9 @@ class Compiler:
         
         self.out += (" " * tabs) + Tokens([value[0], Token("="), Token("property()")]).join() + "\n"
 
+        self.__nameStack.push((value[0].tok, "property"))
         self.__propertyLoop(Tokens(block), tabs, loop, objNames, value[0])
+        self.__nameStack.pop()
 
         return loop, objNames
     
@@ -1344,7 +1431,7 @@ class Compiler:
                         if next is None: break
 
                         if next.tok != ",":
-                            next.warning('invalid syntax: expecting "," after variable name in a for loop. ignoring')
+                            self.__warning('invalid syntax: expecting "," after variable name in a for loop. ignoring', next)
                         else: variablesDef.next()
 
                 _, iterable = self.getUntilNotInExpr("{", tokens, True, advance = False)
@@ -1383,7 +1470,7 @@ class Compiler:
             inTabs = tabs
         else:
             if len(value) > 1:
-                value[0].warning('enum name should contain only one token. using first')
+                self.__warning('enum name should contain only one token. using first', value[0])
 
             self.out += (" " * tabs) + Tokens([Token("class"), value[0]]).join() + ":"
 
@@ -1438,9 +1525,10 @@ class Compiler:
         self.out = ""
         self.useIdentifiers = {}
 
-        self.macros = {}
-        self.consts = {}
-        self.preConsts = {}
+        self.macros      = {}
+        self.consts      = {}
+        self.preConsts   = {}
+        self.__nameStack = NameStack()
 
         self.hadError  = False
         self.asDynamic = False
@@ -1494,7 +1582,7 @@ class Compiler:
             "ignore":              self.__ignore
         }
 
-    def __warning(self, msg, line):
+    def __lineWarn(self, msg, line):
         print(f"warning (line {str(line + 1)}):", msg)
 
     def __lineErr(self, msg, line):
@@ -1503,7 +1591,10 @@ class Compiler:
 
     def __error(self, msg, token : Token):
         self.hadError = True
-        token.error(msg)
+        token.error(msg, self.__nameStack.getCurrentLocation())
+
+    def __warning(self, msg, token : Token):
+        token.warning(msg, self.__nameStack.getCurrentLocation())
 
     def __resetFlags(self):
         self.flags = {
@@ -1532,7 +1623,7 @@ class Compiler:
     def checkDirectNext(self, ch, msg, tokens : Tokens):
         next = tokens.next()
         if next.tok != ch:
-            next.warning(f'invalid syntax: expecting "{ch}" directly after {msg}. ignoring.')
+            self.__warning(f'invalid syntax: expecting "{ch}" directly after {msg}. ignoring.', next)
             next = self.getUntil(ch, tokens)
 
         return next
@@ -1721,29 +1812,47 @@ class Compiler:
 
                 _, expr = self.getUntilNotInExpr(";", tokens, True, advance = False)
                 self.out += (" " * tabs) + Tokens(expr).join() + "\n"
-            elif next.tok == "__OPAL_PYTHON_EMBED":
-                if self.__manualEmbed:
-                    next.warning('avoid manually using "__OPAL_PYTHON_EMBED" for readability purposes. prefer the $nocompile-$restore syntax')
+            elif next.tok == "__OPALSIG":
+                kw = tokens.last()
+
+                if self.__manualSig:
+                    self.__warning('"__OPALSIG" is meant for internal use. please do not use it in production', next)
 
                 next = tokens.next()
-                if next.tok != "-":
-                    next.warning('invalid syntax: expecting "-" after "__OPAL_PYTHON_EMBED". ignoring')
-                else: next = tokens.next()
+                if next.tok != "[":
+                    self.__warning('invalid syntax: expecting "[" after "__OPALSIG". ignoring', next)
 
-                try:
-                    embedTabs = int(next.tok)
-                except ValueError:
-                    next.warning('expecting an integer after "__OPAL_PYTHON_EMBED-". using 0')
-                    embedTabs = 0
+                signal = Tokens(self.getSameLevelParenthesis("[", "]", tokens)).join()
 
-                next = tokens.peek()
-                if next.tok != ".":
-                    next.warning(f'invalid syntax: expecting "." after "__OPAL_PYTHON_EMBED-{embedTabs}". ignoring')
-                else: tokens.next()
+                next = tokens.next()
+                if next.tok != "(":
+                    self.__warning(f'invalid syntax: expecting "(" after "__OPALSIG[{signal}]". ignoring', next)
 
-                _, code = self.getUntilNotInExpr(";", tokens, True, advance = False)
+                args = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
 
-                self.out += (" " * (embedTabs + tabs)) + Tokens(code).join() + "\n"
+                match signal:
+                    case "PYTHON_EMBED":
+                        try:
+                            args = int(args)
+                        except:
+                            self.__warning('expecting an integer for "PYTHON_EMBED" signal. using 0', kw)
+                            args = 0
+                        
+                        next = tokens.peek()
+                        if next.tok != ".":
+                            self.__warning(f'invalid syntax: expecting "." after "__OPALSIG[PYTHON_EMBED]({args})". ignoring', next)
+                        else: tokens.next()
+
+                        _, code = self.getUntilNotInExpr(";", tokens, True, advance = False)
+
+                        self.out += (" " * (args + tabs)) + Tokens(code).join() + "\n"
+                    case "PUSH_NAME":
+                        try:
+                            self.__nameStack.push(eval(f"({args})"))
+                        except:
+                            self.__warning('invalid arguments for "PUSH_NAME" signal. ignoring line', kw)
+                    case "POP_NAME":
+                        self.__nameStack.pop()
             else:
                 first  = next
                 if next.tok == "<":
@@ -1770,7 +1879,7 @@ class Compiler:
 
                 names, _ = self.__dynamicStepOne(tokens.copy(), tabs)
                 if names is None: 
-                    next.warning("cannot find any variables to convert. it is recommended to remove the type conversion")
+                    self.__warning("cannot find any variables to convert. it is recommended to remove the type conversion", next)
                     continue
 
                 for name in names:
@@ -1782,12 +1891,23 @@ class Compiler:
         return loop, objNames
 
     def replaceConsts(self, expr, consts):
-        for const in consts:
-            expr = re.sub(rf"{const}", str(consts[const]), expr)
-        return expr
+        res = ""
+        for line in expr.split("\n"):
+            expr  = Tokens(line)
+            found = False
+            for i in range(len(expr.tokens)):
+                if expr.tokens[i].tok in consts:
+                    found = True
+                    expr.tokens[i].tok = consts[expr.tokens[i].tok]
+
+            if found:
+                  res += expr.join() + "\n"
+            else: res += line + "\n"
+
+        return res
 
     def getDir(self, expr):
-        return eval(self.replaceConsts(expr, self.preConsts | self.consts))
+        return eval(self.replaceConsts(expr.strip(), self.preConsts | self.consts))
 
     def readFile(self, fileName, rep = False):
         with open(fileName, "r") as txt:
@@ -1795,7 +1915,7 @@ class Compiler:
         return content.replace("\t", " " if rep else "")
 
     def __readPy(self, fileDir):
-        self.__manualEmbed = False
+        self.__manualSig = False
 
         result = ""
         for line in self.readFile(fileDir).split("\n"):
@@ -1816,136 +1936,138 @@ class Compiler:
                 result += "\n"
                 continue
 
-            if not noSpaceLine[0] in ("$", "#"):
+            if noSpaceLine[0] != "$":
                 if inPy:
-                    self.__manualEmbed = False
+                    self.__manualSig = False
 
                     strippedLine = line.lstrip()
                     tabs = len(line) - len(strippedLine)
-                    line = f"__OPAL_PYTHON_EMBED-{tabs}." + strippedLine.rstrip() + ";"
+                    line = f"__OPALSIG[PYTHON_EMBED]({tabs})." + strippedLine.rstrip() + ";"
 
                 if savingMacro is None:
                     result += line + "\n"
                 else:
                     result += "\n" 
-                    savingMacro.addLine(line)
+                    savingMacro.addLine(line + "\n")
 
                 continue
 
-            if noSpaceLine[0] == "#":
-                result += "\n"
-                continue
+            result += "\n"
 
-            if noSpaceLine[0] == "$":
-                result += "\n"
+            tokenizedLine = Tokens(line)
+            tokenizedLine.next()
 
-                tokenizedLine = Tokens(line)
-                tokenizedLine.next()
+            next = tokenizedLine.next()
+            match next.tok:
+                case "include":
+                    if savingMacro is not None:
+                        self.__lineWarn("precompiler instruction (include) found inside macro definition. ignoring line", i)
+                        continue
 
-                next = tokenizedLine.next()
-                match next.tok:
-                    case "include":
-                        if savingMacro is not None:
-                            self.__warning("precompiler instruction (include) found inside macro definition. ignoring line", i)
-                            continue
+                    self.__manualSig = False
                         
-                        fileDir = self.getDir(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
+                    fileDir = self.getDir(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
                         
-                        if fileDir.endswith(".py"):
-                            result += self.__readPy(fileDir)
+                    result += f'__OPALSIG[PUSH_NAME]("{fileDir}","file")\n'
+                    if fileDir.endswith(".py"):
+                        result += self.__readPy(fileDir)
+                    else:
+                        result += self.__preCompiler(self.readFile(fileDir))
+                    result += "__OPALSIG[POP_NAME]()\n"
+                case "includeDirectory":
+                    if savingMacro is not None:
+                        self.__lineWarn("precompiler instruction (includeDirectory) found inside macro definition. ignoring line", i)
+                        continue
+
+                    fileDir = self.getDir(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
+
+                    for file in [os.path.join(fileDir, f) for f in os.listdir(fileDir) if f.endswith(".opal") or f.endswith(".py")]:
+                        self.__manualSig = False
+                        result += f'__OPALSIG[PUSH_NAME]("{file}","file")\n'
+                        if file.endswith(".py"):
+                            result += self.__readPy(file)
                         else:
-                            result += self.__preCompiler(self.readFile(fileDir))
-                    case "includeDirectory":
-                        if savingMacro is not None:
-                            self.__warning("precompiler instruction (includeDirectory) found inside macro definition. ignoring line", i)
-                            continue
+                            result += self.__preCompiler(self.readFile(file)) + "\n"
+                        result += "__OPALSIG[POP_NAME]()\n"
+                case "define":
+                    if savingMacro is not None:
+                        self.__lineWarn("precompiler instruction (define) found inside macro definition. ignoring line", i)
+                        continue
 
-                        fileDir = self.getDir(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
-
-                        included = ""
-                        for file in [os.path.join(fileDir, f) for f in os.listdir(fileDir) if f.endswith(".opal") or f.endswith(".py")]:
-                            if file.endswith(".py"):
-                                result += self.__readPy(file)
-                            else:
-                                included += self.readFile(file) + "\n"
-
-                        result += self.__preCompiler(included)
-                    case "define":
-                        if savingMacro is not None:
-                            self.__warning("precompiler instruction (define) found inside macro definition. ignoring line", i)
-                            continue
-
-                        name    = tokenizedLine.next().tok
-                        content = Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()
+                    name    = tokenizedLine.next().tok
+                    content = Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()
                         
-                        self.consts[name] = content
-                    case "pdefine":
-                        if savingMacro is not None:
-                            self.__warning("precompiler instruction (pdefine) found inside macro definition. ignoring line", i)
+                    self.consts[name] = content
+                case "pdefine":
+                    if savingMacro is not None:
+                        self.__lineWarn("precompiler instruction (pdefine) found inside macro definition. ignoring line", i)
+                        continue
+
+                    name    = tokenizedLine.next().tok
+                    content = Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()
+
+                    self.preConsts[name] = content
+                case "macro":
+                    if savingMacro is not None:
+                        self.__lineWarn("precompiler instruction (macro) found inside macro definition. ignoring line", i)
+                        continue
+
+                    name = tokenizedLine.next().tok
+
+                    next = tokenizedLine.peek()
+                    if next is not None and next.tok == "(":
+                        tokenizedLine.next()
+                        args = self.getSameLevelParenthesis("(", ")", tokenizedLine)
+
+                        if len(args) != 0:
+                            savingMacro = Macro(name, Tokens(args).join())
                             continue
-
-                        name    = tokenizedLine.next().tok
-                        content = Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()
-
-                        self.preConsts[name] = content
-                    case "macro":
-                        if savingMacro is not None:
-                            self.__warning("precompiler instruction (macro) found inside macro definition. ignoring line", i)
-                            continue
-
-                        name = tokenizedLine.next().tok
-
-                        next = tokenizedLine.peek()
-                        if next is not None and next.tok == "(":
-                            tokenizedLine.next()
-                            args = self.getSameLevelParenthesis("(", ")", tokenizedLine)
-
-                            if len(args) != 0:
-                                savingMacro = Macro(name, Tokens(args).join())
-                                continue
             
-                        savingMacro = Macro(name)
-                    case "end":
-                        if savingMacro is None:
-                            self.__warning("end of macro found with no macro definition. ignoring line", i)
-                            continue
+                    savingMacro = Macro(name)
+                case "end":
+                    if savingMacro is None:
+                        self.__lineWarn("end of macro found with no macro definition. ignoring line", i)
+                        continue
 
-                        if savingMacro.code == "":
-                            self.__warning(f'the "{savingMacro.name}" macro is being saved as empty', i)
+                    if savingMacro.code == "":
+                        self.__lineWarn(f'the "{savingMacro.name}" macro is being saved as empty', i)
                         
-                        self.macros[savingMacro.name] = savingMacro
-                        savingMacro = None
-                    case "call":
-                        if savingMacro is not None:
-                            self.__warning("precompiler instruction (call) found inside macro definition. ignoring line", i)
-                            continue
+                    self.macros[savingMacro.name] = savingMacro
+                    savingMacro = None
+                case "call":
+                    if savingMacro is not None:
+                        self.__lineWarn("precompiler instruction (call) found inside macro definition. ignoring line", i)
+                        continue
 
-                        name = tokenizedLine.next().tok
+                    name = tokenizedLine.next().tok
 
-                        if name not in self.macros:
-                            self.__lineErr(f'trying to call undefined macro "{name}"', i)
-                            continue
+                    if name not in self.macros:
+                        self.__lineErr(f'trying to call undefined macro "{name}"', i)
+                        continue
 
-                        macro = self.macros[name]
+                    macro = self.macros[name]
 
-                        next = tokenizedLine.peek()
-                        if next is not None and next.tok == "(":
-                            tokenizedLine.next()
-                            args = self.getSameLevelParenthesis("(", ")", tokenizedLine)
+                    self.__manualSig = False
+                    result += f'__OPALSIG[PUSH_NAME]("{name}","macro")\n'
+                    next = tokenizedLine.peek()
+                    if next is not None and next.tok == "(":
+                        tokenizedLine.next()
+                        args = self.getSameLevelParenthesis("(", ")", tokenizedLine)
 
-                            if len(args) != 0:
-                                if macro.args == args:
-                                    result += f"new dynamic {macro.args};"
-                                else:
-                                    result += f"new dynamic {macro.args};{macro.args}={Tokens(args).join()};"
+                        if len(args) != 0:
+                            if macro.args == args:
+                                result += f"new dynamic {macro.args};"
+                            else:
+                                result += f"new dynamic {macro.args};{macro.args}={Tokens(args).join()};"
                                 
-                        result += macro.code
-                    case "nocompile":
-                        inPy = True
-                    case "restore":
-                        inPy = False
-                    case _:
-                        self.__warning("unknown or incomplete precompiler instruction. ignoring line", i)
+                    result += macro.code
+                    result += "__OPALSIG[POP_NAME]()\n"
+                case "nocompile":
+                    inPy = True
+                case "restore":
+                    inPy = False
+                case _:
+                    self.__lineWarn("unknown or incomplete precompiler instruction. ignoring line", i)
 
         return self.replaceConsts(result, self.consts)
 
@@ -1956,10 +2078,13 @@ class Compiler:
         self.out = ""
         self.hadError = False
 
-        self.__manualEmbed = True
+        self.__manualSig   = True
         self.nextAbstract  = False
         self.nextUnchecked = False
         self.lastPackage   = ""
+
+        if len(self.__nameStack.array) == 0:
+            self.__nameStack.push(("<main>", "file"))
 
         self.tokens = Tokens(self.__preCompiler(section))
 
@@ -1980,6 +2105,7 @@ class Compiler:
         else: return self.out
 
     def compileFile(self, fileIn, top = ""):
+        self.__nameStack.push((fileIn, "file"))
         return self.compile(top + "\n" + self.readFile(fileIn))
 
     def compileToPY(self, fileIn, fileOut, top = ""):
@@ -1994,7 +2120,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.3.13 - thatsOven")
+        print("opal compiler v2023.3.26 - thatsOven")
     else:
         compiler = Compiler()
 
@@ -2012,7 +2138,7 @@ if __name__ == "__main__":
             sys.argv.pop(idx)
 
             drt = sys.argv.pop(idx).replace("\\", "\\\\")
-            compiler.preConsts["HOME_DIR"] = drt
+            compiler.preConsts["HOME_DIR"] = f'"{drt}"'
             top = 'new dynamic HOME_DIR="' + drt + '";'
         else:
             findDir = True
@@ -2026,7 +2152,7 @@ if __name__ == "__main__":
 
             if findDir:
                 drt = getHomeDirFromFile(sys.argv[2])
-                compiler.preConsts["HOME_DIR"] = drt
+                compiler.preConsts["HOME_DIR"] = f'"{drt}"'
                 top = 'new dynamic HOME_DIR="' + drt + '";'
 
             if len(sys.argv) == 3:
@@ -2046,7 +2172,7 @@ if __name__ == "__main__":
 
             if findDir:
                 drt = getHomeDirFromFile(sys.argv[2])
-                compiler.preConsts["HOME_DIR"] = drt
+                compiler.preConsts["HOME_DIR"] = f'"{drt}"'
                 top = 'new dynamic HOME_DIR="' + drt + '";'
 
             compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), "tmp.py", top)
@@ -2066,7 +2192,7 @@ if __name__ == "__main__":
 
             if findDir:
                 drt = getHomeDirFromFile(sys.argv[1])
-                compiler.preConsts["HOME_DIR"] = drt
+                compiler.preConsts["HOME_DIR"] = f'"{drt}"'
                 top = 'new dynamic HOME_DIR="' + drt + '";'
 
             result = compiler.compileFile(sys.argv[1], top)
