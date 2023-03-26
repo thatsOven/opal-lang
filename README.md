@@ -386,7 +386,7 @@ new function myFunction() {}
 Comments are only allowed at the beginning of a line, and are marked with the `#` symbol.
 ## Statements
 ### `$define`
-Defines a constant. Constants defined using `$define` are replaced before compilation using regex, so they might create unwanted behaviors.
+Defines a constant.
 ```
 $define constantName constantContent
 ```
@@ -395,7 +395,7 @@ Defines a constant that is only visible to the precompiler.
 ```
 $pdefine constantName constantContent
 ```
-opal will automatically create a `HOME_DIR` "pconstant" that points to the base directory of the given file.
+opal will automatically create a `HOME_DIR` "pconstant" (and variable) that points to the base directory of the given file.
 ### `$include`
 Includes a Python or opal file inside an opal file. Expects a `str` or path-like argument (it gets evaluated using Python's `eval`). Usage of the `os` module is allowed and recommended, especially to join directories and filenames.
 ```
