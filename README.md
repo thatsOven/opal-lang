@@ -384,7 +384,7 @@ new function myFunction() {}
 ```
 # Precompiler
 ## Comments
-Comments are only allowed at the beginning of a line, and are marked with the `#` symbol.
+Comments are marked with the `#` symbol and extend until a newline is found.
 ## Statements
 ### `$define`
 Defines a constant.
