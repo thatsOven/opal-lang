@@ -2,7 +2,8 @@
     
 # opal 
 opal is a transcompiled programming language based on Python. 
-NOTE: due to how the compiler works, it might not detect some syntax errors.
+
+NOTE: due to how the compiler works, it might not detect some syntax errors, especially in expressions.
 # Compiler usage
 [ ] = optional
 * To compile to a `.py` file: `opalc.py pycompile input_file [output_file]`
