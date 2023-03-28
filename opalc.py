@@ -40,6 +40,15 @@ class NameStack:
     def pop(self):
         self.array.pop()
 
+    def lookfor(self, item):
+        array = self.array.copy()
+
+        while len(array) > 0:
+            curr = array.pop()
+
+            if curr[1] == item:
+                return curr
+
     def getCurrentLocation(self):
         array = self.array.copy()
         curr  = array.pop()
@@ -151,7 +160,7 @@ class Tokens:
             self.pos += 1
             return tmp
         
-        self.tokens[self.pos - 1].error("invalid syntax: the expression wasn't properly closed. no tokens remaining")
+        self.tokens[self.pos - 1].error("invalid syntax: the expression wasn't properly closed. no tokens remaining", "<main>")
     
     def last(self) -> Token:
         return self.tokens[self.pos - 1]
@@ -547,9 +556,36 @@ class Compiler:
 
                 self.newObj(objNames, name, "untyped")
 
-                next = self.checkDirectNext(";", "abstract object definition", tokens)
+                peek = tokens.peek()
+                if peek is None:
+                    self.__error('invalid syntax: expecting ";" or type identifier')
+                    return loop, objNames
 
-                self.out += (" " * tabs) + translates + " " + name.tok + f"({argsString}):pass\n"
+                if peek.tok == ";":
+                    tokens.next()
+                    retType = "dynamic"
+                else:                        
+                    _, retType = self.getUntilNotInExpr(";", tokens, True, advance = False)
+                    if retType[0].tok == "<":
+                        self.__warning("checked typing is not effective in abstract methods. ignoring", retType[0])
+
+                        if retType[-1].tok != ">":
+                            self.__warning("checked type angular brackets should be closed. ignoring", retType[-1])
+                            retType = Tokens(retType[1:]).join()
+                        else:
+                            retType = Tokens(retType[1:-1]).join()
+                    else:
+                        retType = Tokens(retType).join()
+
+                    if retType == "auto":
+                        self.__warning('"auto" cannot be used as a return type. using "dynamic"', next)
+                        return loop, objNames
+                        
+                if retType == "dynamic":
+                    self.out += (" " * tabs) + translates + " " + name.tok + f"({argsString}):pass\n"
+                else:
+                    self.out += (" " * tabs) + translates + " " + name.tok + f"({argsString})->{retType}:pass\n"
+
                 return loop, objNames
             
             if isRecord:
@@ -569,7 +605,32 @@ class Compiler:
             
             self.newObj(objNames, name, "untyped")
         
-            next = self.checkDirectNext("{", "function definition", tokens)
+            peek = tokens.peek()
+            if peek is None:
+                self.__error('invalid syntax: expecting "{" or type identifier')
+                return loop, objNames
+
+            if peek.tok == "{":
+                tokens.next()
+                retType = "dynamic"
+                retMode = TypeCheckMode.NOCHECK
+            else:
+                _, retType = self.getUntilNotInExpr("{", tokens, True, advance = False)
+                if retType[0].tok == "<":
+                    if retType[-1].tok != ">":
+                        self.__warning("checked type angular brackets should be closed. ignoring", retType[-1])
+                        retType = Tokens(retType[1:]).join()
+                    else:
+                        retType = Tokens(retType[1:-1]).join()
+
+                    retMode = TypeCheckMode.CHECK
+                else:
+                    retType = Tokens(retType).join()
+                    retMode = TypeCheckMode.FORCE
+
+                if retType == "auto":
+                    self.__warning('"auto" cannot be used as a return type. using "dynamic"', next)
+                    return loop, objNames
         else:
             argsString = ""
             
@@ -592,8 +653,11 @@ class Compiler:
             self.newObj(objNames, name, "class")
 
         if translates == "class" and argsString == "":
-              self.out += (" " * tabs) + translates + " " + name.tok + ":"
-        else: self.out += (" " * tabs) + translates + " " + name.tok + "(" + argsString + "):"
+            self.out += (" " * tabs) + translates + " " + name.tok + ":"
+        elif translates == "class" or retMode == TypeCheckMode.NOCHECK:
+            self.out += (" " * tabs) + translates + " " + name.tok + "(" + argsString + "):"
+        else:
+            self.out += (" " * tabs) + translates + " " + name.tok + "(" + argsString + f")->{retType}:"
 
         block = self.getSameLevelParenthesis("{", "}", tokens)
         if len(block) == 0:
@@ -614,7 +678,7 @@ class Compiler:
         for var in internalVars:
             intObjs[var[0]] = (var[1], var[2])
 
-        self.__nameStack.push((name.tok, "fn"))
+        self.__nameStack.push((name.tok, "fn", (retType, retMode)))
         self.__compiler(block, tabs + 1, loop, intObjs)
         self.__nameStack.pop()
         return loop, objNames
@@ -653,6 +717,8 @@ class Compiler:
             self.newObj(objNames, name, type_, mode)
 
             if not variablesDef.isntFinished(): 
+                self.out += (" " * tabs) + name.tok + ":" + type_ + "\n"
+
                 if type_ == "auto":
                     self.__error(f'auto-typed variables cannot be defined without being assigned', name) 
 
@@ -666,26 +732,28 @@ class Compiler:
                 if type_ in ("auto", "dynamic") or mode == TypeCheckMode.NOCHECK: 
                     self.out += (" " * tabs) + name.tok + "=" + value + "\n"
                 elif mode == TypeCheckMode.CHECK:
-                    self.out += (" " * tabs) + name.tok + f"=_OPAL_ASSERT_CLASSVAR_TYPE_({type_},{value})\n"
+                    self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_ASSERT_CLASSVAR_TYPE_({type_},{value})\n"
                 elif self.eval:
                     typeClass = locate(type_)
 
                     try:
                         evaluated = typeClass(eval(value))
                     except:
-                        self.out += (" " * tabs) + name.tok + "=" + type_ + f"({value})\n"
+                        self.out += (" " * tabs) + name.tok + ":" + type_ + "=" + type_ + f"({value})\n"
                     else:
-                        code = name.tok + "=" + str(evaluated)
+                        code = name.tok + ":" + type_ + "=" + str(evaluated)
 
                         try:
                             exec(code)
                         except:
-                            self.out += (" " * tabs) + name.tok + "=" + type_ + f"({value})\n"
+                            self.out += (" " * tabs) + name.tok + ":" + type_ + "=" + type_ + f"({value})\n"
                         else:
                             self.out += (" " * tabs) + code + "\n"
                 else:
-                    self.out += (" " * tabs) + name.tok + "=" + type_ + f"({value})\n"
+                    self.out += (" " * tabs) + name.tok + ":" + type_ + "=" + type_ + f"({value})\n"
             elif next.tok == ",": 
+                self.out += (" " * tabs) + name.tok + ":" + type_ + "\n"
+
                 next = variablesDef.next()
 
                 if type_ == "auto":
@@ -723,6 +791,13 @@ class Compiler:
         return loop, objNames
     
     def __return(self, tokens : Tokens, tabs, loop, objNames):
+        kw = tokens.last()
+
+        fnProperties = self.__nameStack.lookfor("fn")
+        if fnProperties is None:
+            self.__error('cannot use "return" outside of a function', kw)
+            return loop, objNames
+
         next = tokens.peek()
         if next.tok == ";":
             tokens.next()
@@ -731,7 +806,22 @@ class Compiler:
         
         _, val = self.getUntilNotInExpr(";", tokens, True, advance = False)
 
-        self.out += (" " * tabs) + Tokens([Token("return")] + val).join() + "\n"
+        match fnProperties[2][1]:
+            case TypeCheckMode.NOCHECK:
+                self.out += (" " * tabs) + Tokens([Token("return")] + val).join() + "\n"
+            case TypeCheckMode.CHECK:
+                if not self.flags["OPAL_ASSERT_CLASSVAR"]:
+                    self.out = "from libs.std import _OPAL_ASSERT_CLASSVAR_TYPE_\n" + self.out
+                    self.flags["OPAL_ASSERT_CLASSVAR"] = True
+
+                self.out += (" " * tabs) + Tokens(
+                    [
+                        Token("return"), Token("_OPAL_ASSERT_CLASSVAR_TYPE_"), 
+                        Token("("), Token(fnProperties[2][0]), Token(",")
+                    ] + val + [Token(")")]
+                ).join() + "\n"
+            case TypeCheckMode.FORCE:
+                self.out += (" " * tabs) + Tokens([Token("return"), Token(fnProperties[2][0]), Token("(")] + val + [Token(")")]).join() + "\n"
 
         return loop, objNames
     
@@ -1870,7 +1960,7 @@ class Compiler:
                         mode = TypeCheckMode.FORCE
                         
                 next = tokens.next()
-                if next.tok != "<-":
+                if next is None or next.tok != "<-":
                     self.__error('unknown statement or identifier', first)
                     continue
 
@@ -2117,7 +2207,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.3.26 - thatsOven")
+        print("opal compiler v2023.3.28 - thatsOven")
     else:
         compiler = Compiler()
 

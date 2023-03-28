@@ -81,10 +81,16 @@ new function functionName(arg0 : int, arg1 : <str>) {
 	# your code here
 }
 ```
-... and default arguments can be defined.
+... default arguments can be defined...
 ```
 new function functionName(arg0 : int = 2 + 2, arg1 = "hi") {
 	# your code here
+}
+```
+... and return types can be specified.
+```
+new function add(a: int, b: int) int {
+	return a + b;
 }
 ```
 #### `class`
