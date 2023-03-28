@@ -9,7 +9,6 @@ NOTE: due to how the compiler works, it might not detect some syntax errors, esp
 * To compile to a `.py` file: `opalc.py pycompile input_file [output_file]`
 * To compile to a `.pyc` file: `opalc.py compile input_file [output_file]`
 * To directly run opal source: `opalc.py file_name`
-
 # Command line arguments
 - `--dynamic`
 	- Ignores types in the compiled result. It gives a performance benefit, but it can break some programs that rely on type conversion.
@@ -17,6 +16,14 @@ NOTE: due to how the compiler works, it might not detect some syntax errors, esp
 - `--noeval`
 	- Avoids evaluating constant expressions when defining new variables
 	- **Usage**: --noeval
+# Installation
+To properly run opal code, you will need to install these Python modules:
+```
+pygame
+numpy
+typeguard
+```
+opal only supports Python 3.10 and upper.
 # Runner
 if you are running Windows on your machine, and you'd like to double click on opal source to directly run it:
 
