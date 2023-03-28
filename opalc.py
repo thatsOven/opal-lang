@@ -53,7 +53,7 @@ class NameStack:
         for name in reversed(names):
             match name[1]:
                 case "file":
-                    out += os.path.basename(name[0]) + ": "
+                    out += name[0] + ": "
                 case "fn":
                     out += name[0] + "()."
                 case "macro":
@@ -1965,7 +1965,7 @@ class Compiler:
                         
                     fileDir = self.getDir(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
                         
-                    result += f'__OPALSIG[PUSH_NAME]("{fileDir}","file")\n'
+                    result += f'__OPALSIG[PUSH_NAME]("{os.path.basename(fileDir)}","file")\n'
                     if fileDir.endswith(".py"):
                         result += self.__readPy(fileDir)
                     else:
@@ -1980,7 +1980,7 @@ class Compiler:
 
                     for file in [os.path.join(fileDir, f) for f in os.listdir(fileDir) if f.endswith(".opal") or f.endswith(".py")]:
                         self.__manualSig = False
-                        result += f'__OPALSIG[PUSH_NAME]("{file}","file")\n'
+                        result += f'__OPALSIG[PUSH_NAME]("{os.path.basename(file)}","file")\n'
                         if file.endswith(".py"):
                             result += self.__readPy(file)
                         else:
