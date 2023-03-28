@@ -570,7 +570,7 @@ class Compiler:
                         self.__warning("checked typing is not effective in abstract methods. ignoring", retType[0])
 
                         if retType[-1].tok != ">":
-                            self.__warning("checked type angular brackets should be closed. ignoring", retType[-1])
+                            self.__error("checked type angular brackets must be closed", retType[-1])
                             retType = Tokens(retType[1:]).join()
                         else:
                             retType = Tokens(retType[1:-1]).join()
@@ -578,8 +578,8 @@ class Compiler:
                         retType = Tokens(retType).join()
 
                     if retType == "auto":
-                        self.__warning('"auto" cannot be used as a return type. using "dynamic"', next)
-                        return loop, objNames
+                        self.__error('"auto" cannot be used as a return type', next)
+                        retType = "dynamic"
                         
                 if retType == "dynamic":
                     self.out += (" " * tabs) + translates + " " + name.tok + f"({argsString}):pass\n"
@@ -618,7 +618,7 @@ class Compiler:
                 _, retType = self.getUntilNotInExpr("{", tokens, True, advance = False)
                 if retType[0].tok == "<":
                     if retType[-1].tok != ">":
-                        self.__warning("checked type angular brackets should be closed. ignoring", retType[-1])
+                        self.__error("checked type angular brackets must be closed", retType[-1])
                         retType = Tokens(retType[1:]).join()
                     else:
                         retType = Tokens(retType[1:-1]).join()
@@ -629,8 +629,9 @@ class Compiler:
                     retMode = TypeCheckMode.FORCE
 
                 if retType == "auto":
-                    self.__warning('"auto" cannot be used as a return type. using "dynamic"', next)
-                    return loop, objNames
+                    self.__error('"auto" cannot be used as a return type', next)
+                    retType = "dynamic"
+                    retMode = TypeCheckMode.NOCHECK
         else:
             argsString = ""
             
@@ -785,7 +786,7 @@ class Compiler:
     def __quit(self, tokens : Tokens, tabs, loop, objNames):
         next = tokens.peek()
         if next.tok != ";":
-            self.__warning('expecting ";" after "quit". ignoring', next)
+            self.__error('expecting ";" after "quit"', next)
         else: tokens.next()
 
         self.out += (" " * tabs) + "quit()\n"
@@ -831,7 +832,7 @@ class Compiler:
         keyw = tokens.last()
         next = tokens.peek()
         if next.tok != ";":
-            self.__warning('expecting ";" after "break". ignoring', next)
+            self.__error('expecting ";" after "break"', next)
         else: tokens.next()
 
         if loop is None:
@@ -847,9 +848,9 @@ class Compiler:
         next = tokens.peek()
 
         if next is None:
-            self.__warning('expecting ";" after "continue". ignoring', keyw)
+            self.__error('expecting ";" after "continue"', keyw)
         elif next.tok != ";":
-            self.__warning('expecting ";" after "continue". ignoring', next)
+            self.__error('expecting ";" after "continue"', next)
         else: tokens.next()
 
         if loop is None:
@@ -880,7 +881,7 @@ class Compiler:
     def __unchecked(self, tokens : Tokens, tabs, loop, objNames):
         next = tokens.peek()
         if next.tok != ":":
-            self.__warning('expecting ":" after "unchecked". ignoring', next)
+            self.__error('expecting ":" after "unchecked"', next)
         else: tokens.next()
 
         self.nextUnchecked = True
@@ -890,7 +891,7 @@ class Compiler:
     def __abstract(self, tokens : Tokens, tabs, loop, objNames):
         next = tokens.peek()
         if next.tok != ":":
-            self.__warning('expecting ":" after "abstract". ignoring', next)
+            self.__error('expecting ":" after "abstract"', next)
         else: tokens.next()
 
         self.nextAbstract = True
@@ -1005,7 +1006,7 @@ class Compiler:
 
         peek = tokens.peek()
         if peek is None or peek.tok != ";":
-            self.__warning('expecting ";" after use identifier definition. ignoring', next)
+            self.__error('expecting ";" after use identifier definition', next)
         else: tokens.next()
 
         return loop, objNames
@@ -1079,7 +1080,7 @@ class Compiler:
             tokens.next()
             next = tokens.next()
             if next.tok != ")":
-                self.__warning("invalid syntax: brackets should be closed. ignoring", next)
+                self.__error("invalid syntax: brackets should be closed", next)
 
             if self.flags["mainfn"]:
                 self.__error("main function can only be defined once", keyw)
@@ -1111,7 +1112,7 @@ class Compiler:
 
             next = tokens.peek()
             if next.tok != "while":
-                self.__warning('invalid syntax: expecting "while" after a do-while loop. ignoring', next)
+                self.__warning('expecting "while" after a do-while loop. ignoring', next)
             else: tokens.next()
 
             _, condition = self.getUntilNotInExpr(";", tokens, True, advance = False)
@@ -1297,7 +1298,7 @@ class Compiler:
             if name is None:
                 next = tokens.peek()
                 if next.tok != "<":
-                    self.__warning(f'expecting "<" after {type_} outside of a "property" statement. ignoring', next)
+                    self.__error(f'expecting "<" after {type_} outside of a "property" statement', next)
                     localName = next
                 else: 
                     tokens.next()
@@ -1321,7 +1322,7 @@ class Compiler:
                     valName = self.getSameLevelParenthesis("(", ")", tokens)
 
                     if len(valName) > 1:
-                        self.__warning('only one argument should be passed to a setter. using first', valName[0])
+                        self.__error('only one argument should be passed to a setter. using first', valName[0])
                 else:
                     valName = [Token("value")]
 
@@ -1382,7 +1383,7 @@ class Compiler:
         block = self.getSameLevelParenthesis("{", "}", tokens)
 
         if len(value) > 1:
-            self.__warning('property name should contain only one token. using first', value[0])
+            self.__error('property name should contain only one token. using first', value[0])
         
         self.newObj(objNames, value[0], "untyped")
 
@@ -1520,7 +1521,7 @@ class Compiler:
                         if next is None: break
 
                         if next.tok != ",":
-                            self.__warning('invalid syntax: expecting "," after variable name in a for loop. ignoring', next)
+                            self.__error('invalid syntax: expecting "," after variable name in a for loop', next)
                         else: variablesDef.next()
 
                 _, iterable = self.getUntilNotInExpr("{", tokens, True, advance = False)
@@ -1559,7 +1560,7 @@ class Compiler:
             inTabs = tabs
         else:
             if len(value) > 1:
-                self.__warning('enum name should contain only one token. using first', value[0])
+                self.__error('enum name should contain only one token. using first', value[0])
 
             self.out += (" " * tabs) + Tokens([Token("class"), value[0]]).join() + ":"
 
@@ -1712,7 +1713,7 @@ class Compiler:
     def checkDirectNext(self, ch, msg, tokens : Tokens):
         next = tokens.next()
         if next.tok != ch:
-            self.__warning(f'invalid syntax: expecting "{ch}" directly after {msg}. ignoring.', next)
+            self.__error(f'invalid syntax: expecting "{ch}" directly after {msg}. ignoring.', next)
             next = self.getUntil(ch, tokens)
 
         return next
@@ -1909,13 +1910,13 @@ class Compiler:
 
                 next = tokens.next()
                 if next.tok != "[":
-                    self.__warning('invalid syntax: expecting "[" after "__OPALSIG". ignoring', next)
+                    self.__error('invalid syntax: expecting "[" after "__OPALSIG". ignoring', next)
 
                 signal = Tokens(self.getSameLevelParenthesis("[", "]", tokens)).join()
 
                 next = tokens.next()
                 if next.tok != "(":
-                    self.__warning(f'invalid syntax: expecting "(" after "__OPALSIG[{signal}]". ignoring', next)
+                    self.__error(f'invalid syntax: expecting "(" after "__OPALSIG[{signal}]". ignoring', next)
 
                 args = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
 
@@ -1924,12 +1925,12 @@ class Compiler:
                         try:
                             args = int(args)
                         except:
-                            self.__warning('expecting an integer for "PYTHON_EMBED" signal. using 0', kw)
+                            self.__error('expecting an integer for "PYTHON_EMBED" signal', kw)
                             args = 0
                         
                         next = tokens.peek()
                         if next.tok != ".":
-                            self.__warning(f'invalid syntax: expecting "." after "__OPALSIG[PYTHON_EMBED]({args})". ignoring', next)
+                            self.__error(f'invalid syntax: expecting "." after "__OPALSIG[PYTHON_EMBED]({args})"', next)
                         else: tokens.next()
 
                         _, code = self.getUntilNotInExpr(";", tokens, True, advance = False)
@@ -1939,7 +1940,7 @@ class Compiler:
                         try:
                             self.__nameStack.push(eval(f"({args})"))
                         except:
-                            self.__warning('invalid arguments for "PUSH_NAME" signal. ignoring line', kw)
+                            self.__error('invalid arguments for "PUSH_NAME" signal', kw)
                     case "POP_NAME":
                         self.__nameStack.pop()
             else:
