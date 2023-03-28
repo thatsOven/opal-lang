@@ -180,10 +180,6 @@ def translate(value, min_, max_, minResult, maxResult):
 
     return minResult + (scaled * deltaOut)
 
-def _OPAL_ASSERT_CLASSVAR_TYPE_(className, inputVal):
-    if type(inputVal) is className: return inputVal
-    else:                           raise  TypeError("Invalid type " + str(type(inputVal)) + " for variable of type " + str(className))
-
 class dynamic: pass
 
 def _OPAL_PRINT_RETURN_(val):

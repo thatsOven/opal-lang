@@ -688,9 +688,9 @@ class Compiler:
         next = tokens.last()
 
         if next.tok == "<":
-            if not self.flags["OPAL_ASSERT_CLASSVAR"]:
-                self.out = "from libs.std import _OPAL_ASSERT_CLASSVAR_TYPE_\n" + self.out
-                self.flags["OPAL_ASSERT_CLASSVAR"] = True
+            if not self.flags["check_type"]:
+                self.out = "from typeguard import check_type as _CHECK_TYPE_\n" + self.out
+                self.flags["check_type"] = True
 
             type_ = Tokens(self.getSameLevelParenthesis("<", ">", tokens)).join()
             mode = TypeCheckMode.CHECK
@@ -734,7 +734,7 @@ class Compiler:
                 if type_ in ("auto", "dynamic") or mode == TypeCheckMode.NOCHECK: 
                     self.out += (" " * tabs) + name.tok + "=" + value + "\n"
                 elif mode == TypeCheckMode.CHECK:
-                    self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_ASSERT_CLASSVAR_TYPE_({type_},{value})\n"
+                    self.out += (" " * tabs) + name.tok + f":{type_}=_CHECK_TYPE_({value},{type_})\n"
                 elif self.eval:
                     typeClass = locate(type_)
 
@@ -813,15 +813,16 @@ class Compiler:
             case TypeCheckMode.NOCHECK:
                 self.out += (" " * tabs) + Tokens([Token("return")] + val).join() + "\n"
             case TypeCheckMode.CHECK:
-                if not self.flags["OPAL_ASSERT_CLASSVAR"]:
-                    self.out = "from libs.std import _OPAL_ASSERT_CLASSVAR_TYPE_\n" + self.out
-                    self.flags["OPAL_ASSERT_CLASSVAR"] = True
+                if not self.flags["check_type"]:
+                    self.out = "from typeguard import check_type as _CHECK_TYPE_\n" + self.out
+                    self.flags["check_type"] = True
 
                 self.out += (" " * tabs) + Tokens(
                     [
-                        Token("return"), Token("_OPAL_ASSERT_CLASSVAR_TYPE_"), 
-                        Token("("), Token(fnProperties[2][0]), Token(",")
-                    ] + val + [Token(")")]
+                        Token("return"), Token("_CHECK_TYPE_"), Token("(")
+                    ] + val + [
+                        Token(","), Token(fnProperties[2][0]), Token(")")
+                    ]
                 ).join() + "\n"
             case TypeCheckMode.FORCE:
                 self.out += (" " * tabs) + Tokens([Token("return"), Token(fnProperties[2][0]), Token("(")] + val + [Token(")")]).join() + "\n"
@@ -1688,7 +1689,7 @@ class Compiler:
 
     def __resetFlags(self):
         self.flags = {
-            "OPAL_ASSERT_CLASSVAR": False,
+            "check_type": False,
             "abstract": False,
             "mainfn": False,
             "OPAL_PRINT_RETURN": False
@@ -1870,11 +1871,11 @@ class Compiler:
                         if objNames[name][1] == TypeCheckMode.FORCE:
                             self.out += (" " * tabs) + f"{name}=_OPAL_AUTOMATIC_TYPE_{name}({name})\n"
                         else:
-                            self.out += (" " * tabs) + f"{name}=_OPAL_ASSERT_CLASSVAR_TYPE_(_OPAL_AUTOMATIC_TYPE_{name},{name})\n"
+                            self.out += (" " * tabs) + f"{name}=_CHECK_TYPE_({name},_OPAL_AUTOMATIC_TYPE_{name})\n"
 
                         self.out += (" " * tabs) + "del _OPAL_AUTOMATIC_TYPE_" + name + "\n"
                 elif objNames[name][1] == TypeCheckMode.CHECK:
-                    self.out += (" " * tabs) + f"{name}=_OPAL_ASSERT_CLASSVAR_TYPE_({objNames[name][0]},{name})\n"
+                    self.out += (" " * tabs) + f"{name}=_CHECK_TYPE_({name},{objNames[name][0]})\n"
                 elif objNames[name][1] == TypeCheckMode.FORCE:
                     self.out += (" " * tabs) + f"{name}={objNames[name][0]}({name})\n"
     
@@ -1949,9 +1950,9 @@ class Compiler:
                     type_ = Tokens(self.getSameLevelParenthesis("<", ">", tokens)).join()
                     mode  = TypeCheckMode.CHECK
 
-                    if self.flags["OPAL_ASSERT_CLASSVAR"]:
-                        self.out = "from libs.std import _OPAL_ASSERT_CLASSVAR_TYPE_\n" + self.out
-                        self.flags["OPAL_ASSERT_CLASSVAR"] = True
+                    if self.flags["check_type"]:
+                        self.out = "from typeguard import check_type as _CHECK_TYPE_\n" + self.out
+                        self.flags["check_type"] = True
                 elif next.tok == "(":
                     type_ = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
                     mode  = TypeCheckMode.FORCE
