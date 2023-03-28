@@ -717,7 +717,8 @@ class Compiler:
             self.newObj(objNames, name, type_, mode)
 
             if not variablesDef.isntFinished(): 
-                self.out += (" " * tabs) + name.tok + ":" + type_ + "\n"
+                if type_ not in ("dynamic", "auto"):
+                    self.out += (" " * tabs) + name.tok + ":" + type_ + "\n"
 
                 if type_ == "auto":
                     self.__error(f'auto-typed variables cannot be defined without being assigned', name) 
@@ -752,7 +753,8 @@ class Compiler:
                 else:
                     self.out += (" " * tabs) + name.tok + ":" + type_ + "=" + type_ + f"({value})\n"
             elif next.tok == ",": 
-                self.out += (" " * tabs) + name.tok + ":" + type_ + "\n"
+                if type_ not in ("dynamic", "auto"):
+                    self.out += (" " * tabs) + name.tok + ":" + type_ + "\n"
 
                 next = variablesDef.next()
 
