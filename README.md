@@ -478,3 +478,17 @@ dynamic <- a = Vector(2, 3);
 # type of a is dynamic
 ```
 Typing used with the arrow operator follows the same rules as types in the new statement.
+- `++` and `--`: They work as increments (respectively `+= 1` and `-= 1`). They are only allowed as statements, that is, 
+they can't be used inside expressions. They can be used inside the first and last parts of a C-like for statement, and 
+inside an inline type conversion (arrow operator). These syntaxes are all valid:
+```
+new int var = 0;
+var++;
+var--:
+
+--var; # this "operator-first" syntax is only allowed as a statement alone, 
+# that is, for example, it won't work in a for loop.
+++var;
+
+float <- var++;
+```
