@@ -50,9 +50,7 @@ Example:
 # this defines the variable and assigns to it
 new int aNumber = 2;
 
-# this only defines the variable. note that 
-# Python will not recognize this variable until
-# it is assigned
+# this only defines the variable
 new str name;
 
 # var can accept any type
