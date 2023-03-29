@@ -1977,6 +1977,9 @@ class Compiler:
                     if name in objNames:
                         objNames[name] = (type_, mode)
 
+                        if type_ not in ("dynamic", "auto"):
+                            self.out += (" " * tabs) + name + ":" + type_ + "\n"
+
                 self.__variablesHandler(tokens, tabs, objNames, False)
 
         return loop, objNames
