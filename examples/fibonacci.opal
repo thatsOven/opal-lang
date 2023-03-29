@@ -1,6 +1,6 @@
 package opal: import *;
 
-new function getInt() {
+new function getInt() int {
     while True {
         IO.out("Insert number of terms: ");
         new dynamic n = IO.read();
@@ -15,7 +15,7 @@ new function getInt() {
                 continue;
             }
 
-            return int(n);
+            return n;
         }
     }
 }
