@@ -437,21 +437,20 @@ $call sayHi
 $call add(2, 4)
 ```
 ### `$nocompile`
-Tells the precompiler to directly transcribe code to the result until a `$restore` statement. In practice, it allows to use Python code inside opal. Python code in `$nocompile`-`$restore` blocks should be put on a "null indentation", for example:
+Tells the precompiler to directly transcribe code to the result until a `$restore` statement. In practice, it allows to use Python code inside opal.
 ```
 if a != b {
 	if a < b {
 		$nocompile
 		
-for i in range(a, b):
-	if i > 2:
-		print(i)
+		for i in range(a, b):
+			if i > 2:
+				print(i)
 		
 		$restore
 	}
 }
 ```
-This is needed because opal will add to the base indentation an inferred indentation, that is based on the code logic. This allows to directly import Python source files with no syntax errors.
 
 # Operators
 Since opal directly passes expressions to Python, that is, it doesn't parse them, operators are almost identical to Python's, with

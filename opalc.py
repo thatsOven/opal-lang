@@ -1922,21 +1922,24 @@ class Compiler:
                 args = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
 
                 match signal:
-                    case "PYTHON_EMBED":
+                    case "PYTHON_EMBED" | "PYTHON_EMBED_INFER":
                         try:
                             args = int(args)
                         except:
-                            self.__error('expecting an integer for "PYTHON_EMBED" signal', kw)
+                            self.__error(f'expecting an integer for "{signal}" signal', kw)
                             args = 0
                         
                         next = tokens.peek()
                         if next.tok != ".":
-                            self.__error(f'invalid syntax: expecting "." after "__OPALSIG[PYTHON_EMBED]({args})"', next)
+                            self.__error(f'invalid syntax: expecting "." after "__OPALSIG[{signal}]({args})"', next)
                         else: tokens.next()
 
                         _, code = self.getUntilNotInExpr(";", tokens, True, advance = False)
 
-                        self.out += (" " * (args + tabs)) + Tokens(code).join() + "\n"
+                        if signal == "PYTHON_EMBED":
+                            self.out += (" " * tabs) + Tokens(code).join() + "\n"
+                        else:
+                            self.out += (" " * (args + tabs)) + Tokens(code).join() + "\n"
                     case "PUSH_NAME":
                         try:
                             self.__nameStack.push(eval(f"({args})"))
@@ -2015,7 +2018,7 @@ class Compiler:
         for line in self.readFile(fileDir).split("\n"):
             strippedLine = line.lstrip()
             tabs = len(line) - len(strippedLine)
-            result += f"__OPAL_PYTHON_EMBED-{tabs}." + line + ";\n"
+            result += f"__OPALSIG[PYTHON_EMBED_INFER]({tabs})." + strippedLine.rstrip() + ";\n"
 
         return result
 
