@@ -1937,7 +1937,7 @@ class Compiler:
                         _, code = self.getUntilNotInExpr(";", tokens, True, advance = False)
 
                         if signal == "PYTHON_EMBED":
-                            self.out += (" " * tabs) + Tokens(code).join() + "\n"
+                            self.out += (" " * args) + Tokens(code).join() + "\n"
                         else:
                             self.out += (" " * (args + tabs)) + Tokens(code).join() + "\n"
                     case "PUSH_NAME":
