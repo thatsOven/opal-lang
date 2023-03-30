@@ -36,7 +36,7 @@ if you are running Windows on your machine, and you'd like to double click on op
 package opal: import *;
 
 main {
-    IO.out("Hello World!\n");
+    IO::out("Hello World!\n");
 }
 ```
 
@@ -82,13 +82,13 @@ The types of a function's parameter can be specified...
 ```
 # typing in function parameters follow the same rules as 
 # types in the new statement
-new function functionName(arg0 : int, arg1 : <str>) {
+new function functionName(arg0: int, arg1: <str>) {
 	# your code here
 }
 ```
 ... default arguments can be defined...
 ```
-new function functionName(arg0 : int = 2 + 2, arg1 = "hi") {
+new function functionName(arg0: int = 2 + 2, arg1 = "hi") {
 	# your code here
 }
 ```
@@ -337,7 +337,7 @@ match a {
 }
 ```
 ### `namespace`
-Creates a namespace. Effectively just a class that can't inherit from other classes.
+Creates a namespace. Effectively just a class that can't inherit from other classes and can't be instantiated.
 ```
 namespace MyNamespace {
 	# your code here
@@ -422,7 +422,7 @@ $includeDirectory os.path.join(HOME_DIR, "myFolder")
 Defines a macro. A macro is a basic function that gets called with no overhead, since its body is copy-pasted into calls. Avoid using this too often since it can quickly increase the result file size. The body of the macro is anything between the `$macro` statement and an `$end` statement. Precompiler instructions cannot be used inside a macro definition. Macros can be defined with no arguments...
 ```
 $macro sayHi
-	IO.out("Hi!\n");
+	IO::out("Hi!\n");
 $end
 ```
 ... or with arguments. Arguments do not accept types and a default value cannot be set.
@@ -453,18 +453,19 @@ if a != b {
 ```
 
 # Operators
-Since opal directly passes expressions to Python, that is, it doesn't parse them, operators are almost identical to Python's, with
+Since opal directly passes expressions to Python, that is, it doesn't parse them, Python operators are all usable, with
 a few additions:
 - `!`: Equivalent to Python's `not`. If used at the beginning of a line with a variable name, it will invert the state of that variable:
 ```
-!variable;
+!variable; # is equivalent to variable = !variable;
 
-# is equivalent to:
-# variable = !variable;
+not variable; # this also produces the same result
 ```
-
 - `||`: Equivalent to Python's `or`;
 - `&&`: Equivalent to Python's `and`;
+- `::`: Equivalent to `.`. It's only conventionally used to mark access to a member of a namespace, or a static member in general.
+opal tries to keep modifiers esplicit, and this syntax allows to understand whether the data or function you're accessing is static
+without looking at its definition. Kind of like how Python developers know they shouldn't touch variables starting with an underscore!
 - `?`: It's used for debugging purposes. It prints the given expression and returns it:
 ```
 myFunction(a, ?(b), c); 

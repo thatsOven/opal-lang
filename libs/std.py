@@ -185,3 +185,7 @@ class dynamic: pass
 def _OPAL_PRINT_RETURN_(val):
     print(val)
     return val
+
+class OpalNamespace:
+    def __init__(self):
+        raise TypeError("Can't instantiate a namespace")

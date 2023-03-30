@@ -84,7 +84,7 @@ class Macro:
         self.args = args
         self.code = ""
 
-    def addLine(self, line):
+    def add(self, line):
         self.code += line
 
 class Token:
@@ -176,6 +176,8 @@ class Tokens:
                     tokens[i].tok = "and"
                 case "!":
                     tokens[i].tok = "not"
+                case "::":
+                    tokens[i].tok = "."
                 case "?":
                     tokens[i].tok = "_OPAL_PRINT_RETURN_"
                 case "super":
@@ -187,7 +189,7 @@ class Tokens:
         return tokens
 
     @classmethod
-    def verifyTok(self, tokens : list, first : Token, next : Token, opts):
+    def verifyTok(self, tokens: list, first: Token, next: Token, opts):
         if next.tok in opts:
             first.tok += next.tok
             tokens.append(first)
@@ -322,11 +324,14 @@ class Tokens:
                 case "&":
                     if self.verifyTok(tokens, token, tmp[i], ("&", "=")): i += 1
                     continue
+                case ":":
+                    if self.verifyTok(tokens, token, tmp[i], (":", "=")): i += 1
+                    continue
                 case "f" | "r" | "b" | "fr" | "br" | "rf" | "rb":
                     if tmp[i].tok.startswith('"') or tmp[i].tok.startswith("'"):
                         token.tok += tmp[i].tok
                         i += 1
-                case ":" | "^" | "%" | "=":
+                case "^" | "%" | "=":
                     if tmp[i].tok == "=":
                         token.tok += tmp[i].tok
                         i += 1
@@ -1101,8 +1106,12 @@ class Compiler:
         if tmp.tok != "{":
             self.__error('invalid syntax: expecting "{" after namespace definition')
             return loop, objNames
+        
+        if not self.flags["namespace"]:
+            self.flags["namespace"] = True
+            self.out = "from libs.std import OpalNamespace\n" + self.out
 
-        return self.__block("class", content = [next], push = (next.tok, "class"))(tokens, tabs, loop, objNames)
+        return self.__block(f"class", content = [next, Token("(OpalNamespace)")], push = (next.tok, "class"))(tokens, tabs, loop, objNames)
     
     def __do(self, tokens : Tokens, tabs, loop, objNames):
         peek = tokens.peek()
@@ -1692,7 +1701,8 @@ class Compiler:
             "check_type": False,
             "abstract": False,
             "mainfn": False,
-            "OPAL_PRINT_RETURN": False
+            "OPAL_PRINT_RETURN": False,
+            "namespace": False
         }
 
     def newObj(self, objNames, nameToken : Token, type_, checkPolicy = TypeCheckMode.NOCHECK):
@@ -1911,13 +1921,13 @@ class Compiler:
 
                 next = tokens.next()
                 if next.tok != "[":
-                    self.__error('invalid syntax: expecting "[" after "__OPALSIG". ignoring', next)
+                    self.__error('invalid syntax: expecting "[" after "__OPALSIG"', next)
 
                 signal = Tokens(self.getSameLevelParenthesis("[", "]", tokens)).join()
 
                 next = tokens.next()
                 if next.tok != "(":
-                    self.__error(f'invalid syntax: expecting "(" after "__OPALSIG[{signal}]". ignoring', next)
+                    self.__error(f'invalid syntax: expecting "(" after "__OPALSIG[{signal}]"', next)
 
                 args = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
 
@@ -2045,7 +2055,7 @@ class Compiler:
                     result += line + "\n"
                 else:
                     result += "\n" 
-                    savingMacro.addLine(line + "\n")
+                    savingMacro.add(line + "\n")
 
                 continue
 
@@ -2057,10 +2067,6 @@ class Compiler:
             next = tokenizedLine.next()
             match next.tok:
                 case "include":
-                    if savingMacro is not None:
-                        self.__lineWarn("precompiler instruction (include) found inside macro definition. ignoring line", i)
-                        continue
-
                     self.__manualSig = False
                         
                     fileDir = self.getDir(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
@@ -2072,10 +2078,6 @@ class Compiler:
                         result += self.__preCompiler(self.readFile(fileDir))
                     result += "__OPALSIG[POP_NAME]()\n"
                 case "includeDirectory":
-                    if savingMacro is not None:
-                        self.__lineWarn("precompiler instruction (includeDirectory) found inside macro definition. ignoring line", i)
-                        continue
-
                     fileDir = self.getDir(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
 
                     for file in [os.path.join(fileDir, f) for f in os.listdir(fileDir) if f.endswith(".opal") or f.endswith(".py")]:
@@ -2087,19 +2089,11 @@ class Compiler:
                             result += self.__preCompiler(self.readFile(file)) + "\n"
                         result += "__OPALSIG[POP_NAME]()\n"
                 case "define":
-                    if savingMacro is not None:
-                        self.__lineWarn("precompiler instruction (define) found inside macro definition. ignoring line", i)
-                        continue
-
                     name    = tokenizedLine.next().tok
                     content = Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()
                         
                     self.consts[name] = content
                 case "pdefine":
-                    if savingMacro is not None:
-                        self.__lineWarn("precompiler instruction (pdefine) found inside macro definition. ignoring line", i)
-                        continue
-
                     name    = tokenizedLine.next().tok
                     content = Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()
 
@@ -2132,10 +2126,6 @@ class Compiler:
                     self.macros[savingMacro.name] = savingMacro
                     savingMacro = None
                 case "call":
-                    if savingMacro is not None:
-                        self.__lineWarn("precompiler instruction (call) found inside macro definition. ignoring line", i)
-                        continue
-
                     name = tokenizedLine.next().tok
 
                     if name not in self.macros:
@@ -2145,7 +2135,7 @@ class Compiler:
                     macro = self.macros[name]
 
                     self.__manualSig = False
-                    result += f'__OPALSIG[PUSH_NAME]("{name}","macro")\n'
+                    buf = f'__OPALSIG[PUSH_NAME]("{name}","macro")\n'
                     next = tokenizedLine.peek()
                     if next is not None and next.tok == "(":
                         tokenizedLine.next()
@@ -2153,12 +2143,17 @@ class Compiler:
 
                         if len(args) != 0:
                             if macro.args == args:
-                                result += f"new dynamic {macro.args};"
+                                buf += f"new dynamic {macro.args};"
                             else:
-                                result += f"new dynamic {macro.args};{macro.args}={Tokens(args).join()};"
+                                buf += f"new dynamic {macro.args};{macro.args}={Tokens(args).join()};"
                                 
-                    result += macro.code
-                    result += "__OPALSIG[POP_NAME]()\n"
+                    buf += macro.code
+                    buf += "__OPALSIG[POP_NAME]()\n"
+                    
+                    if savingMacro is None:
+                        result += buf
+                    else:
+                        savingMacro.add(buf)
                 case "nocompile":
                     inPy = True
                 case "restore":
