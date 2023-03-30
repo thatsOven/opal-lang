@@ -419,7 +419,7 @@ Includes every `.py` and `.opal` file in a given directory. Expects a `str` or p
 $includeDirectory os.path.join(HOME_DIR, "myFolder")
 ```
 ### `$macro`
-Defines a macro. A macro is a basic function that gets called with no overhead, since its body is copy-pasted into calls. Avoid using this too often since it can quickly increase the result file size. The body of the macro is anything between the `$macro` statement and an `$end` statement. Precompiler instructions cannot be used inside a macro definition. Macros can be defined with no arguments...
+Defines a macro. A macro is a basic function that gets called with no overhead, since its body is copy-pasted into calls. Avoid using this too often since it can quickly increase the result file size. The body of the macro is anything between the `$macro` statement and an `$end` statement. Macros can be defined with no arguments...
 ```
 $macro sayHi
 	IO::out("Hi!\n");
