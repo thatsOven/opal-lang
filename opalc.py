@@ -176,8 +176,6 @@ class Tokens:
                     tokens[i].tok = "and"
                 case "!":
                     tokens[i].tok = "not"
-                case "::":
-                    tokens[i].tok = "."
                 case "?":
                     tokens[i].tok = "_OPAL_PRINT_RETURN_"
                 case "super":
@@ -324,14 +322,11 @@ class Tokens:
                 case "&":
                     if self.verifyTok(tokens, token, tmp[i], ("&", "=")): i += 1
                     continue
-                case ":":
-                    if self.verifyTok(tokens, token, tmp[i], (":", "=")): i += 1
-                    continue
                 case "f" | "r" | "b" | "fr" | "br" | "rf" | "rb":
                     if tmp[i].tok.startswith('"') or tmp[i].tok.startswith("'"):
                         token.tok += tmp[i].tok
                         i += 1
-                case "^" | "%" | "=":
+                case ":" | "^" | "%" | "=":
                     if tmp[i].tok == "=":
                         token.tok += tmp[i].tok
                         i += 1

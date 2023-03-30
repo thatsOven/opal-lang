@@ -36,7 +36,7 @@ if you are running Windows on your machine, and you'd like to double click on op
 package opal: import *;
 
 main {
-    IO::out("Hello World!\n");
+    IO.out("Hello World!\n");
 }
 ```
 
@@ -422,7 +422,7 @@ $includeDirectory os.path.join(HOME_DIR, "myFolder")
 Defines a macro. A macro is a basic function that gets called with no overhead, since its body is copy-pasted into calls. Avoid using this too often since it can quickly increase the result file size. The body of the macro is anything between the `$macro` statement and an `$end` statement. Macros can be defined with no arguments...
 ```
 $macro sayHi
-	IO::out("Hi!\n");
+	IO.out("Hi!\n");
 $end
 ```
 ... or with arguments. Arguments do not accept types and a default value cannot be set.
@@ -463,9 +463,6 @@ not variable; # this also produces the same result
 ```
 - `||`: Equivalent to Python's `or`;
 - `&&`: Equivalent to Python's `and`;
-- `::`: Equivalent to `.`. It's only conventionally used to mark access to a member of a namespace, or a static member in general.
-opal tries to keep modifiers esplicit, and this syntax allows to understand whether the data or function you're accessing is static
-without looking at its definition. Kind of like how Python developers know they shouldn't touch variables starting with an underscore!
 - `?`: It's used for debugging purposes. It prints the given expression and returns it:
 ```
 myFunction(a, ?(b), c); 
