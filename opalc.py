@@ -28,7 +28,7 @@ from timeit    import default_timer
 from pathlib   import Path
 from pydoc     import locate
 
-SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "=")
+SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 
 class NameStack:
     def __init__(self):
