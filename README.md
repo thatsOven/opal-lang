@@ -10,9 +10,13 @@ NOTE: due to how the compiler works, it might not detect some syntax errors, esp
 * To compile to a `.pyc` file: `opalc.py compile input_file [output_file]`
 * To directly run opal source: `opalc.py file_name`
 # Command line arguments
-- `--dynamic`
-	- Ignores types in the compiled result. It gives a performance benefit, but it can break some programs that rely on type conversion.
-	- **Usage**: --dynamic
+- `--type-mode`
+	- Selects a default typing mode for the script. Options are:
+		- `hybrid`: The default one. Forces the type when it doesn't create problems, checks otherwise;
+		- `check`: Checks types. Some conversions won't be automatic (for example, assigning a `tuple` to a `list` typed variable won't convert it automatically);
+		- `force`: Always forces types. Can break programs as forced typing doesn't always work properly;
+		- `none`: Uses dynamic typing for all variables.
+	- **Usage**: --type-mode mode
 - `--noeval`
 	- Avoids evaluating constant expressions when defining new variables
 	- **Usage**: --noeval
