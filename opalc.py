@@ -503,12 +503,9 @@ class Compiler:
                     next = args.peek()
                     if next is not None and next.tok == ":":
                         args.next()
-                        next = args.next()
-
-                        if next.tok == "(":
-                            type_ = Tokens(self.getSameLevelParenthesis("(", ")", args)).join()
-                        else:
-                            type_ = next.tok
+                        next, type_ = self.getUntilNotInExpr(("=", ","), args, True, False, False)
+                        if next != "" and next.tok in ("=", ","): args.pos -= 1
+                        type_ = Tokens(type_).join()
                     else:
                         type_ = "dynamic"
 
@@ -764,7 +761,7 @@ class Compiler:
                 [
                     Token("return"), Token("_OPAL_CHECK_TYPE_"), Token("(")
                 ] + val + [
-                    Token(","), Token(fnProperties[2][0]), Token(")")
+                    Token(","), Token(fnProperties[2]), Token(")")
                 ]
             ).join() + "\n"
 
@@ -887,10 +884,9 @@ class Compiler:
             next = imports.next()
             if next == "": break
 
-            if next.tok == "(":
-                name = tokens.peek()
-                self.getSameLevelParenthesis("(", ")", imports)
-            else: name = next
+            next, type_ = self.getUntilNotInExpr(("as", ","), imports, True, False, False)
+            if next != "" and next.tok in ("as", ","): imports.pos -= 1
+            type_ = Tokens(type_).join()
 
             if not imports.isntFinished():
                 self.newObj(objNames, name, "untyped")
@@ -912,8 +908,6 @@ class Compiler:
                 self.__error("invalid syntax: modules should be separated by commas", next)
 
         self.lastPackage = ""
-
-        imports.tokens = [x for x in imports.tokens if x.tok not in ("(", ")")]
 
         self.out += (" " * tabs) + "import " + imports.join() + "\n"
 
@@ -1680,6 +1674,9 @@ class Compiler:
         else:      return ""
     
     def getUntilNotInExpr(self, ch, tokens : Tokens, buffer = False, errorNotFound = True, advance = True, unallowed = []):
+        if type(ch) is str:
+            ch = (ch, )
+
         rdBrack = 0
         sqBrack = 0
         crBrack = 0
@@ -1706,11 +1703,11 @@ class Compiler:
                     lastSqBrack = next
                     sqBrack -= 1
                 case "{":
-                    if ch != "{":
+                    if "{" not in ch:
                         lastCrBrack = next
                         crBrack += 1
                 case "}":
-                    if ch != "{":
+                    if "{" not in ch:
                         lastCrBrack = next
                         crBrack -= 1
                 case "\\":
@@ -1732,7 +1729,7 @@ class Compiler:
                 else:      return ""
 
             if rdBrack == 0 and sqBrack == 0 and crBrack == 0:
-                if next.tok == ch:
+                if next.tok in ch:
                     if advance and tokens.isntFinished():
                         next = tokens.next()
 
@@ -1761,9 +1758,9 @@ class Compiler:
 
         if errorNotFound:
             if next is None:
-                self.__error(f'expecting character "{ch}"', Token(""))
+                self.__error(f'expecting character(s) {ch}', Token(""))
             else:
-                self.__error(f'expecting character "{ch}"', next)
+                self.__error(f'expecting character(s) {ch}', next)
 
         if buffer: return "", buf
         else:      return ""
