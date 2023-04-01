@@ -26,7 +26,6 @@ class IO:
     from libs.std import endl, out, read
 
 class Utils:
-
     from libs.std import (
                             swap,
                             tolerance,
@@ -59,6 +58,12 @@ class Utils:
 
     class Integers:
         from libs.std import getNearestPowerOfTwo
+
+class Typing:
+    from libs.std import (
+        mode, hybrid, check,
+        force, none
+    )
 
 from libs.std      import dynamic
 from libs.Array    import Array

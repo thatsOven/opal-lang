@@ -62,12 +62,6 @@ new str name;
 
 # var can accept any type
 new dynamic var;
-
-# putting type names in angular brackets tells the compiler
-# not to force that type, and only check if assigments of the given
-# type are made. it is recommended to use angular brackets whenever
-# defining a variable that contains instances of a custom defined class
-new <Vector> aVector = Vector(2, 3);
 ```
 
 ### opal specific keywords
@@ -80,9 +74,7 @@ new function functionName(arg0, arg1) {
 ```
 The types of a function's parameter can be specified...
 ```
-# typing in function parameters follow the same rules as 
-# types in the new statement
-new function functionName(arg0: int, arg1: <str>) {
+new function functionName(arg0: int, arg1: str) {
 	# your code here
 }
 ```
@@ -478,9 +470,6 @@ new int a = 2;
 
 float <- a = 3;
 # type of a is float
-
-<str> <- a = str(a);
-# type of a is str, and will now only be checked instead of forced
 
 dynamic <- a = Vector(2, 3);
 # type of a is dynamic

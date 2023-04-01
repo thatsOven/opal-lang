@@ -417,10 +417,7 @@ class Tokens:
                     tokens.append(lastTok)
 
         return self.replaceTokens(tokens)
-    
-class TypeCheckMode:
-    CHECK, FORCE, NOCHECK = 0, 1, 2
-
+        
 class Compiler:
     def __new(self, tokens : Tokens, tabs, loop, objNames):
         next = tokens.next()
@@ -462,6 +459,10 @@ class Compiler:
                 translates = "class"
                 isRecord = True
             case "class":
+                if not self.flags["object"]:
+                    self.flags["object"] = True
+                    self.out = "from libs.std import OpalObject\n" + self.out
+
                 translates = "class"
             case _:
                 return self.__newVar(tokens, tabs, loop, objNames)
@@ -496,7 +497,7 @@ class Compiler:
                     argName = next.tok
 
                     if not args.isntFinished():
-                        internalVars.append((argName, "dynamic", TypeCheckMode.NOCHECK))
+                        internalVars.append((argName, "dynamic"))
                         break
                     
                     next = args.peek()
@@ -506,7 +507,6 @@ class Compiler:
 
                         if next.tok == "(":
                             type_ = Tokens(self.getSameLevelParenthesis("(", ")", args)).join()
-                            mode  = TypeCheckMode.FORCE
                         elif next.tok == "<":
                             args.tokens.pop(args.pos - 1)
                             args.pos -= 1
@@ -516,20 +516,16 @@ class Compiler:
                             args.tokens.pop(args.pos - 1)
                             args.pos -= 1
                             
-                            mode  = TypeCheckMode.CHECK
                         else:
                             type_ = next.tok
-                            mode  = TypeCheckMode.FORCE
                     else:
                         type_ = "dynamic"
-                        mode  = TypeCheckMode.NOCHECK
 
                     if type_ == "auto":
                         self.__error('"auto" cannot be used as a parameter type', next)
                         type_ = "dynamic"
-                        mode  = TypeCheckMode.NOCHECK
 
-                    internalVars.append((argName, type_, mode))
+                    internalVars.append((argName, type_))
 
                     if not args.isntFinished(): break
 
@@ -566,14 +562,7 @@ class Compiler:
                     retType = "dynamic"
                 else:                        
                     _, retType = self.getUntilNotInExpr(";", tokens, True, advance = False)
-                    if retType[0].tok == "<":
-                        if retType[-1].tok != ">":
-                            self.__error("checked type angular brackets must be closed", retType[-1])
-                            retType = Tokens(retType[1:]).join()
-                        else:
-                            retType = Tokens(retType[1:-1]).join()
-                    else:
-                        retType = Tokens(retType).join()
+                    retType = Tokens(retType).join()
 
                     if retType == "auto":
                         self.__error('"auto" cannot be used as a return type', next)
@@ -611,25 +600,13 @@ class Compiler:
             if peek.tok == "{":
                 tokens.next()
                 retType = "dynamic"
-                retMode = TypeCheckMode.NOCHECK
             else:
                 _, retType = self.getUntilNotInExpr("{", tokens, True, advance = False)
-                if retType[0].tok == "<":
-                    if retType[-1].tok != ">":
-                        self.__error("checked type angular brackets must be closed", retType[-1])
-                        retType = Tokens(retType[1:]).join()
-                    else:
-                        retType = Tokens(retType[1:-1]).join()
-
-                    retMode = TypeCheckMode.CHECK
-                else:
-                    retType = Tokens(retType).join()
-                    retMode = TypeCheckMode.FORCE
+                retType = Tokens(retType).join()
 
                 if retType == "auto":
                     self.__error('"auto" cannot be used as a return type', next)
                     retType = "dynamic"
-                    retMode = TypeCheckMode.NOCHECK
         else:
             argsString = ""
             
@@ -641,19 +618,19 @@ class Compiler:
                 
                 if self.nextAbstract:
                     self.nextAbstract = False
-                    argsString += ",_ABSTRACT_BASE_CLASS_"
+                    argsString += ",_ABSTRACT_BASE_CLASS_,OpalObject"
             else:
                 next = self.checkDirectNext("{", "class definition", tokens)
 
                 if self.nextAbstract:
                     self.nextAbstract = False
-                    argsString = "_ABSTRACT_BASE_CLASS_"
+                    argsString = "_ABSTRACT_BASE_CLASS_,OpalObject"
 
             self.newObj(objNames, name, "class")
 
         if translates == "class" and argsString == "":
-            self.out += (" " * tabs) + translates + " " + name.tok + ":"
-        elif translates == "class" or retMode == TypeCheckMode.NOCHECK:
+            self.out += (" " * tabs) + translates + " " + name.tok + "(OpalObject):"
+        elif translates == "class" or retType == "dynamic":
             self.out += (" " * tabs) + translates + " " + name.tok + "(" + argsString + "):"
         else:
             self.out += (" " * tabs) + translates + " " + name.tok + "(" + argsString + f")->{retType}:"
@@ -675,9 +652,9 @@ class Compiler:
 
         intObjs = objNames.copy()
         for var in internalVars:
-            intObjs[var[0]] = (var[1], var[2])
+            intObjs[var[0]] = var[1]
 
-        self.__nameStack.push((name.tok, "fn", (retType, retMode)))
+        self.__nameStack.push((name.tok, "fn", retType))
         self.__compiler(block, tabs + 1, loop, intObjs)
         self.__nameStack.pop()
         return loop, objNames
@@ -685,26 +662,10 @@ class Compiler:
     def __newVar(self, tokens : Tokens, tabs, loop, objNames):
         next = tokens.last()
 
-        if next.tok == "<":
-            if not self.flags["check_type"]:
-                self.out = "from typeguard import check_type as _CHECK_TYPE_\n" + self.out
-                self.flags["check_type"] = True
-
-            type_ = Tokens(self.getSameLevelParenthesis("<", ">", tokens)).join()
-            mode = TypeCheckMode.CHECK
-
-            if type_ == "dynamic":
-                self.__warning('"dynamic" cannot be a checked type. remove the angular brackets', next)
-                mode = TypeCheckMode.NOCHECK
+        if next.tok == "(":
+            type_ = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
         else:
-            if next.tok == "(":
-                type_ = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
-            else:
-                type_ = next.tok
-
-            if type_ == "dynamic":
-                  mode = TypeCheckMode.NOCHECK
-            else: mode = TypeCheckMode.FORCE
+            type_ = next.tok
 
         _, variablesDef = self.getUntilNotInExpr(";", tokens, True, advance = False)
         variablesDef = Tokens(variablesDef)
@@ -713,7 +674,7 @@ class Compiler:
 
         while True:
             name = next
-            self.newObj(objNames, name, type_, mode)
+            self.newObj(objNames, name, type_)
 
             if not variablesDef.isntFinished(): 
                 if type_ not in ("dynamic", "auto"):
@@ -729,28 +690,26 @@ class Compiler:
                 next, value = self.getUntilNotInExpr(",", variablesDef, True, False)
                 value = Tokens(value).join()
 
-                if type_ in ("auto", "dynamic") or mode == TypeCheckMode.NOCHECK: 
+                if type_ in ("auto", "dynamic"): 
                     self.out += (" " * tabs) + name.tok + "=" + value + "\n"
-                elif mode == TypeCheckMode.CHECK:
-                    self.out += (" " * tabs) + name.tok + f":{type_}=_CHECK_TYPE_({value},{type_})\n"
                 elif self.eval:
                     typeClass = locate(type_)
 
                     try:
                         evaluated = typeClass(eval(value))
                     except:
-                        self.out += (" " * tabs) + name.tok + ":" + type_ + "=" + type_ + f"({value})\n"
+                        self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_CHECK_TYPE_({value},{type_})\n"
                     else:
                         code = name.tok + ":" + type_ + "=" + str(evaluated)
 
                         try:
                             exec(code)
                         except:
-                            self.out += (" " * tabs) + name.tok + ":" + type_ + "=" + type_ + f"({value})\n"
+                            self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_CHECK_TYPE_({value},{type_})\n"
                         else:
                             self.out += (" " * tabs) + code + "\n"
                 else:
-                    self.out += (" " * tabs) + name.tok + ":" + type_ + "=" + type_ + f"({value})\n"
+                    self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_CHECK_TYPE_({value},{type_})\n"
             elif next.tok == ",": 
                 if type_ not in ("dynamic", "auto"):
                     self.out += (" " * tabs) + name.tok + ":" + type_ + "\n"
@@ -807,23 +766,16 @@ class Compiler:
         
         _, val = self.getUntilNotInExpr(";", tokens, True, advance = False)
 
-        match fnProperties[2][1]:
-            case TypeCheckMode.NOCHECK:
-                self.out += (" " * tabs) + Tokens([Token("return")] + val).join() + "\n"
-            case TypeCheckMode.CHECK:
-                if not self.flags["check_type"]:
-                    self.out = "from typeguard import check_type as _CHECK_TYPE_\n" + self.out
-                    self.flags["check_type"] = True
-
-                self.out += (" " * tabs) + Tokens(
-                    [
-                        Token("return"), Token("_CHECK_TYPE_"), Token("(")
-                    ] + val + [
-                        Token(","), Token(fnProperties[2][0]), Token(")")
-                    ]
-                ).join() + "\n"
-            case TypeCheckMode.FORCE:
-                self.out += (" " * tabs) + Tokens([Token("return"), Token(fnProperties[2][0]), Token("(")] + val + [Token(")")]).join() + "\n"
+        if fnProperties[2] == "dynamic":
+            self.out += (" " * tabs) + Tokens([Token("return")] + val).join() + "\n"
+        else:
+            self.out += (" " * tabs) + Tokens(
+                [
+                    Token("return"), Token("_OPAL_CHECK_TYPE_"), Token("(")
+                ] + val + [
+                    Token(","), Token(fnProperties[2][0]), Token(")")
+                ]
+            ).join() + "\n"
 
         return loop, objNames
     
@@ -1351,9 +1303,9 @@ class Compiler:
             self.out += "\n"
             
             if name is None:
-                self.__nameStack.push((f"{self.__getType(type_)}<{localName}>", "fn"))
+                self.__nameStack.push((f"{self.__getType(type_)}<{localName}>", "fn", "dynamic"))
             else:
-                self.__nameStack.push((self.__getType(type_), "fn"))
+                self.__nameStack.push((self.__getType(type_), "fn", "dynamic"))
 
             self.__compiler(Tokens(block), tabs + 1, loop, intObjs)
             self.__nameStack.pop()
@@ -1615,18 +1567,12 @@ class Compiler:
         return names, expr
     
     def __init__(self):
-        self.out = ""
-        self.useIdentifiers = {}
+        self.reset()
 
-        self.macros      = {}
-        self.consts      = {}
-        self.preConsts   = {}
-        self.__nameStack = NameStack()
+        self.preConsts = {}
 
-        self.hadError  = False
-        self.asDynamic = False
-        self.eval      = True
-        self.__resetFlags()
+        self.eval     = True
+        self.typeMode = "hybrid"
 
         self.statementHandlers = {
             "new":                 self.__new,
@@ -1691,21 +1637,21 @@ class Compiler:
 
     def __resetFlags(self):
         self.flags = {
-            "check_type": False,
-            "abstract": False,
-            "mainfn": False,
+            "abstract":          False,
+            "mainfn":            False,
             "OPAL_PRINT_RETURN": False,
-            "namespace": False
+            "namespace":         False,
+            "object":            False
         }
 
-    def newObj(self, objNames, nameToken : Token, type_, checkPolicy = TypeCheckMode.NOCHECK):
+    def newObj(self, objNames, nameToken : Token, type_):
         if not nameToken.tok.isidentifier():
             self.__error(f'invalid identifier name "{nameToken.tok}"', nameToken)
             return
 
-        if self.asDynamic and type_ != "untyped":
-            objNames[nameToken.tok] = ("dynamic", TypeCheckMode.NOCHECK)
-        else: objNames[nameToken.tok] = (type_, checkPolicy)
+        if self.typeMode == "none" and type_ != "untyped":
+              objNames[nameToken.tok] = "dynamic"
+        else: objNames[nameToken.tok] = type_
 
     def newIdentifier(self, nameToken : Token, translatesTo):
         if not nameToken.tok.isidentifier():
@@ -1862,25 +1808,20 @@ class Compiler:
         if names is None: return
 
         for name in names:
-            if name in objNames and objNames[name][0] == "auto" and autoCheck:
+            if name in objNames and objNames[name] == "auto" and autoCheck:
                 self.out += (" " * tabs) + f"_OPAL_AUTOMATIC_TYPE_{name}=type({name})\n"
 
         self.out += (" " * tabs) + expr.join() + "\n"
 
         for name in names:
-            if name in objNames and objNames[name][1] != TypeCheckMode.NOCHECK:
-                if objNames[name][0] == "auto":
-                    if autoCheck:
-                        if objNames[name][1] == TypeCheckMode.FORCE:
-                            self.out += (" " * tabs) + f"{name}=_OPAL_AUTOMATIC_TYPE_{name}({name})\n"
-                        else:
-                            self.out += (" " * tabs) + f"{name}=_CHECK_TYPE_({name},_OPAL_AUTOMATIC_TYPE_{name})\n"
-
-                        self.out += (" " * tabs) + "del _OPAL_AUTOMATIC_TYPE_" + name + "\n"
-                elif objNames[name][1] == TypeCheckMode.CHECK:
-                    self.out += (" " * tabs) + f"{name}=_CHECK_TYPE_({name},{objNames[name][0]})\n"
-                elif objNames[name][1] == TypeCheckMode.FORCE:
-                    self.out += (" " * tabs) + f"{name}={objNames[name][0]}({name})\n"
+            if name in objNames and objNames[name] != "dynamic":
+                if objNames[name] == "auto":
+                    if autoCheck: self.out += (
+                        (" " * tabs) + f"{name}=_OPAL_CHECK_TYPE_({name},_OPAL_AUTOMATIC_TYPE_{name})\n" + 
+                        (" " * tabs) + "del _OPAL_AUTOMATIC_TYPE_" + name + "\n"
+                    )
+                else:
+                    self.out += (" " * tabs) + f"{name}=_OPAL_CHECK_TYPE_({name},{objNames[name]})\n"
     
     def __compiler(self, tokens : Tokens, tabs, loop, objNames):  
         while tokens.isntFinished():
@@ -1952,22 +1893,10 @@ class Compiler:
                         self.__nameStack.pop()
             else:
                 first  = next
-                if next.tok == "<":
-                    type_ = Tokens(self.getSameLevelParenthesis("<", ">", tokens)).join()
-                    mode  = TypeCheckMode.CHECK
-
-                    if self.flags["check_type"]:
-                        self.out = "from typeguard import check_type as _CHECK_TYPE_\n" + self.out
-                        self.flags["check_type"] = True
-                elif next.tok == "(":
+                if next.tok == "(":
                     type_ = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
-                    mode  = TypeCheckMode.FORCE
                 else:
                     type_ = next.tok
-                    if type_ == "dynamic":
-                        mode = TypeCheckMode.NOCHECK
-                    else:
-                        mode = TypeCheckMode.FORCE
                         
                 next = tokens.next()
                 if next is None or next.tok != "<-":
@@ -1981,7 +1910,7 @@ class Compiler:
 
                 for name in names:
                     if name in objNames:
-                        objNames[name] = (type_, mode)
+                        objNames[name] = type_
 
                         if type_ not in ("dynamic", "auto"):
                             self.out += (" " * tabs) + name + ":" + type_ + "\n"
@@ -2155,18 +2084,33 @@ class Compiler:
                     self.__lineWarn("unknown or incomplete precompiler instruction. ignoring line", i)
 
         return self.replaceConsts(result, self.consts)
-
-    def compile(self, section):
-        self.__resetFlags()
+    
+    def reset(self):
         self.useIdentifiers = {}
-        self.macros = {}
-        self.out = ""
-        self.hadError = False
+        self.macros         = {}
+        self.consts         = {}
+        self.__nameStack    = NameStack()
+
+        self.out            = ""
+        self.hadError       = False
 
         self.__manualSig   = True
         self.nextAbstract  = False
         self.nextUnchecked = False
         self.lastPackage   = ""
+
+        self.__resetFlags()
+
+    def compile(self, section):
+        self.reset()
+
+        match self.typeMode:
+            case "hybrid":
+                self.out += "from libs.std import _OPAL_CHECK_TYPE_\n"
+            case "check":
+                self.out += "from typeguard import check_type as _OPAL_CHECK_TYPE_\n"
+            case "force":
+                self.out += "from libs.std import _OPAL_FORCE_TYPE_ as _OPAL_CHECK_TYPE_\n"
 
         if len(self.__nameStack.array) == 0:
             self.__nameStack.push(("<main>", "file"))
@@ -2182,12 +2126,8 @@ class Compiler:
         if self.flags["mainfn"]:
             self.out += 'if __name__=="__main__":_OPAL_MAIN_FUNCTION_()\n'
 
-        self.asDynamic = False
-        self.consts = {}
-        self.preConsts = {}
-
         if self.hadError: return ""
-        else: return self.out
+        else:             return self.out
 
     def compileFile(self, fileIn, top = ""):
         self.__nameStack.push((fileIn, "file"))
@@ -2205,13 +2145,9 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.3.28 - thatsOven")
+        print("opal compiler v2023.4.1 - thatsOven")
     else:
         compiler = Compiler()
-
-        if "--dynamic" in sys.argv:
-            compiler.asDynamic = True
-            sys.argv.remove("--dynamic")
 
         if "--noeval" in sys.argv:
             compiler.eval = False
@@ -2225,6 +2161,19 @@ if __name__ == "__main__":
             drt = sys.argv.pop(idx).replace("\\", "\\\\")
             compiler.preConsts["HOME_DIR"] = f'"{drt}"'
             top = 'new dynamic HOME_DIR="' + drt + '";'
+        else:
+            findDir = True
+
+        if "--type-mode" in sys.argv:
+            findDir = False
+            idx = sys.argv.index("--type-mode")
+            sys.argv.pop(idx)
+
+            mode = sys.argv.pop(idx).lower()
+            if mode in ("hybrid", "check", "force", "none"):
+                compiler.typeMode = mode
+            else:
+                print(f'invalid type mode "{mode}". supported types are hybrid, check, force, none')
         else:
             findDir = True
 

@@ -1,7 +1,7 @@
 package opal: import *;
 package random: import randint, uniform;
 
-new <Vector> RESOLUTION = Vector(1280, 720);
+new Vector RESOLUTION = Vector(1280, 720);
 
 new int DROP_QTY          = 200,
         MIN_DROP_LEN      = 5,
@@ -30,9 +30,9 @@ new float PARTICLE_VELOCITY_MULTIPLIER = 0.98,
 new tuple RAIN_COLOR = (196, 211, 255),
           BG         = (100, 100, 120);
 
-new <Vector> GRAVITY = Vector(0, 0.2);
+new Vector GRAVITY = Vector(0, 0.2);
 
-new <Graphics> graphics = Graphics(RESOLUTION, caption = "Rain");
+new Graphics graphics = Graphics(RESOLUTION, caption = "Rain");
 
 new class Particle {
     new method __init__(pos) {

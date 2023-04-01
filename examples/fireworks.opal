@@ -1,7 +1,7 @@
 package opal: import *;
 package random: import randint, uniform;
 
-new <Vector> RESOLUTION = Vector(1280, 720);
+new Vector RESOLUTION = Vector(1280, 720);
 
 new int FIREWORK_SIZE     = 4,
         PARTICLE_SIZE     = 2,
@@ -18,9 +18,9 @@ new float PARTICLE_VELOCITY_MULTIPLIER = 0.98,
 
 new bool RAINBOW_EXPLOSION = False;
 
-new <Vector> GRAVITY = Vector(0, 0.2);
+new Vector GRAVITY = Vector(0, 0.2);
 
-new <Graphics> graphics = Graphics(RESOLUTION, caption = "Fireworks");
+new Graphics graphics = Graphics(RESOLUTION, caption = "Fireworks");
 
 new class Particle {
     new method __init__(pos, color = (255, 255, 255), exploder = False) {

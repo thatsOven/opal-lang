@@ -25,13 +25,12 @@ COLORS = {
     2048: (255, 198, 0)
 };
 
-new <Vector> RESOLUTION = Vector(RESY - 40, RESY);
+new Vector RESOLUTION = Vector(RESY - 40, RESY);
 
 new int cellWidth = RESOLUTION.x // 4,
           yOffset = RESOLUTION.y - RESOLUTION.x;
 
-new <Vector> cellWidthVec = Vector(cellWidth, cellWidth);
-
+new Vector cellWidthVec = Vector(cellWidth, cellWidth);
 
 new class Grid {
     new method __init__() {

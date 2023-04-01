@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from typeguard import check_type
+
 endl = "\n"
 
 def out(*messages):
@@ -182,6 +184,12 @@ def translate(value, min_, max_, minResult, maxResult):
 
 class dynamic: pass
 
+class _TypeMode: _REP_ = None
+class hybrid(_TypeMode): _REP_ = "hybrid"
+class check(_TypeMode):  _REP_ = "check"
+class force(_TypeMode):  _REP_ = "force"
+class none(_TypeMode):   _REP_ = "none"
+
 def _OPAL_PRINT_RETURN_(val):
     print(val)
     return val
@@ -189,3 +197,38 @@ def _OPAL_PRINT_RETURN_(val):
 class OpalNamespace:
     def __init__(self):
         raise TypeError("Can't instantiate a namespace")
+    
+class OpalObject:
+    _OPAL_TYPEMODE_ = "hybrid"
+
+def mode(mode: _TypeMode):
+    def fn(cls: OpalObject):
+        if mode not in (hybrid, check, force, none):
+            raise TypeError(f'Invalid type mode "{mode}"')
+        
+        cls._OPAL_TYPEMODE_ = mode._REP_
+        return cls
+    return fn
+
+def _OPAL_CHECK_TYPE_(value, type_):
+    if issubclass(type_, OpalObject):
+        match type_._OPAL_TYPEMODE_:
+            case "hybrid": pass
+            case "check":
+                return check_type(value, type_)
+            case "force":
+                return type_(value)
+            case "none":
+                return value
+            case _:
+                raise TypeError(f'Invalid type mode "{type_._OPAL_TYPEMODE_}"')
+
+    orig = value
+    try:    
+        tmp = type_(value)
+        if type_ is not str: assert tmp == orig
+    except: return check_type(value, type_)
+    else:   return tmp 
+
+def _OPAL_FORCE_TYPE_(value, type_):
+    return type_(value)
