@@ -567,8 +567,6 @@ class Compiler:
                 else:                        
                     _, retType = self.getUntilNotInExpr(";", tokens, True, advance = False)
                     if retType[0].tok == "<":
-                        self.__warning("checked typing is not effective in abstract methods. ignoring", retType[0])
-
                         if retType[-1].tok != ">":
                             self.__error("checked type angular brackets must be closed", retType[-1])
                             retType = Tokens(retType[1:]).join()
@@ -1327,7 +1325,7 @@ class Compiler:
                     valName = self.getSameLevelParenthesis("(", ")", tokens)
 
                     if len(valName) > 1:
-                        self.__error('only one argument should be passed to a setter. using first', valName[0])
+                        self.__error('only one argument should be passed to a setter', valName[0])
                 else:
                     valName = [Token("value")]
 
@@ -1388,7 +1386,7 @@ class Compiler:
         block = self.getSameLevelParenthesis("{", "}", tokens)
 
         if len(value) > 1:
-            self.__error('property name should contain only one token. using first', value[0])
+            self.__error('property name should contain only one token', value[0])
         
         self.newObj(objNames, value[0], "untyped")
 
@@ -1565,7 +1563,7 @@ class Compiler:
             inTabs = tabs
         else:
             if len(value) > 1:
-                self.__error('enum name should contain only one token. using first', value[0])
+                self.__error('enum name should contain only one token', value[0])
 
             self.out += (" " * tabs) + Tokens([Token("class"), value[0]]).join() + ":"
 
@@ -1719,7 +1717,7 @@ class Compiler:
     def checkDirectNext(self, ch, msg, tokens : Tokens):
         next = tokens.next()
         if next.tok != ch:
-            self.__error(f'invalid syntax: expecting "{ch}" directly after {msg}. ignoring.', next)
+            self.__error(f'invalid syntax: expecting "{ch}" directly after {msg}', next)
             next = self.getUntil(ch, tokens)
 
         return next
