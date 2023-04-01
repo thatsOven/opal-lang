@@ -602,7 +602,7 @@ class Compiler:
             if next.tok == ":":
                 next = tokens.next()
                 next, args = self.getUntil("{", tokens, True)
-                argsString = Tokens(args).join()
+                argsString = Tokens(args).join() + ",OpalObject"
                 
                 if self.nextAbstract:
                     self.nextAbstract = False
@@ -759,9 +759,9 @@ class Compiler:
         else:
             self.out += (" " * tabs) + Tokens(
                 [
-                    Token("return"), Token("_OPAL_CHECK_TYPE_"), Token("(")
+                    Token("return"), Token("_OPAL_CHECK_TYPE_"), Token("("), Token("(")
                 ] + val + [
-                    Token(","), Token(fnProperties[2]), Token(")")
+                    Token(")"), Token(","), Token(fnProperties[2]), Token(")")
                 ]
             ).join() + "\n"
 
