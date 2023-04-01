@@ -507,15 +507,6 @@ class Compiler:
 
                         if next.tok == "(":
                             type_ = Tokens(self.getSameLevelParenthesis("(", ")", args)).join()
-                        elif next.tok == "<":
-                            args.tokens.pop(args.pos - 1)
-                            args.pos -= 1
-
-                            type_ = Tokens(self.getSameLevelParenthesis("<", ">", args)).join()
-
-                            args.tokens.pop(args.pos - 1)
-                            args.pos -= 1
-                            
                         else:
                             type_ = next.tok
                     else:
