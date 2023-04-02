@@ -574,7 +574,10 @@ class Compiler:
                 )
 
                 for var in internalVars:
-                    self.out += (" " * (tabs + 2)) + f"this.{var[0]}={var[0]}\n"
+                    if var[1] == "dynamic":
+                        self.out += (" " * (tabs + 2)) + f"this.{var[0]}={var[0]}\n"
+                    else:
+                        self.out += (" " * (tabs + 2)) + f"this.{var[0]}:{var[1]}={var[0]}\n"
 
                 return loop, objNames
             
@@ -678,7 +681,7 @@ class Compiler:
                 next, value = self.getUntilNotInExpr(",", variablesDef, True, False)
                 value = Tokens(value).join()
 
-                if type_ in ("auto", "dynamic"): 
+                if type_ in ("auto", "dynamic") or self.typeMode == "none": 
                     self.out += (" " * tabs) + name.tok + "=" + value + "\n"
                 elif self.eval:
                     typeClass = locate(type_)
@@ -754,7 +757,7 @@ class Compiler:
         
         _, val = self.getUntilNotInExpr(";", tokens, True, advance = False)
 
-        if fnProperties[2] == "dynamic":
+        if fnProperties[2] == "dynamic" or self.typeMode == "none":
             self.out += (" " * tabs) + Tokens([Token("return")] + val).join() + "\n"
         else:
             self.out += (" " * tabs) + Tokens(
@@ -884,9 +887,10 @@ class Compiler:
             next = imports.next()
             if next == "": break
 
-            next, type_ = self.getUntilNotInExpr(("as", ","), imports, True, False, False)
+            name = next
+            next, nameBuf = self.getUntilNotInExpr(("as", ","), imports, True, False, False)
             if next != "" and next.tok in ("as", ","): imports.pos -= 1
-            type_ = Tokens(type_).join()
+            if len(nameBuf) != 0: name.tok = Tokens(nameBuf).join()
 
             if not imports.isntFinished():
                 self.newObj(objNames, name, "untyped")
@@ -1554,7 +1558,8 @@ class Compiler:
     def __init__(self):
         self.reset()
 
-        self.preConsts = {}
+        self.preConsts   = {}
+        self.__nameStack = NameStack()
 
         self.eval     = True
         self.typeMode = "hybrid"
@@ -2077,7 +2082,6 @@ class Compiler:
         self.useIdentifiers = {}
         self.macros         = {}
         self.consts         = {}
-        self.__nameStack    = NameStack()
 
         self.out            = ""
         self.hadError       = False
