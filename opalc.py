@@ -754,7 +754,9 @@ class Compiler:
         
         _, val = self.getUntilNotInExpr(";", tokens, True, advance = False)
 
-        if fnProperties[2] == "dynamic" or self.typeMode == "none":
+        if self.nextUnchecked or fnProperties[2] == "dynamic" or self.typeMode == "none":
+            if self.nextUnchecked: self.nextUnchecked = False
+            
             self.out += (" " * tabs) + Tokens([Token("return")] + val).join() + "\n"
         else:
             if self.eval:

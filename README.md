@@ -315,7 +315,8 @@ main() {
 ### `unchecked`
 The `unchecked` flag is used to ignore typing on an assignment or skip checks on other statements. Statements to which the `unchecked` flag can be applied are:
 - `repeat`: skips the conversion to an absolute int;
-- `match`: skips the steps necessary for the `found` clause to work.
+- `match`: skips the steps necessary for the `found` clause to work;
+- `return`: ignores type checking.
 Example:
 ```
 new int a = 2 + 2;
@@ -330,6 +331,14 @@ match a {
 	case 6 {
 		
 	}
+}
+
+new function add(a: int, b: str | int) int {
+	if type(b) is int {
+		unchecked: return a + b;
+	}
+
+	return str(a) + b;
 }
 ```
 ### `namespace`
