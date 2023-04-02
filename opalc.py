@@ -683,23 +683,20 @@ class Compiler:
 
                 if type_ in ("auto", "dynamic") or self.typeMode == "none": 
                     self.out += (" " * tabs) + name.tok + "=" + value + "\n"
-                elif self.eval:
-                    typeClass = locate(type_)
-
-                    try:
-                        evaluated = typeClass(eval(value))
-                    except:
-                        self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_CHECK_TYPE_({value},{type_})\n"
-                    else:
-                        code = name.tok + ":" + type_ + "=" + str(evaluated)
-
-                        try:
-                            exec(code)
-                        except:
-                            self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_CHECK_TYPE_({value},{type_})\n"
-                        else:
-                            self.out += (" " * tabs) + code + "\n"
                 else:
+                    if self.eval:
+                        try:    evaluated = locate(type_)(eval(value))
+                        except: pass
+                        else:
+                            code = name.tok + ":" + type_ + "=" + str(evaluated)
+
+                            try:    exec(code)
+                            except: pass
+                            else:   
+                                self.out += (" " * tabs) + code + "\n"
+                                if next == "": break
+                                continue
+                    
                     self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_CHECK_TYPE_({value},{type_})\n"
             elif next.tok == ",": 
                 if type_ not in ("dynamic", "auto"):
@@ -760,6 +757,16 @@ class Compiler:
         if fnProperties[2] == "dynamic" or self.typeMode == "none":
             self.out += (" " * tabs) + Tokens([Token("return")] + val).join() + "\n"
         else:
+            if self.eval:
+                try:    evaluated = locate(fnProperties[2])(eval(val.join()))
+                except: pass
+                else:
+                    try:    exec("_=" + str(evaluated))
+                    except: pass
+                    else:   
+                        self.out += (" " * tabs) + f"return {str(evaluated)}\n"
+                        return loop, objNames
+
             self.out += (" " * tabs) + Tokens(
                 [
                     Token("return"), Token("_OPAL_CHECK_TYPE_"), Token("("), Token("(")
