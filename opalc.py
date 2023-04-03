@@ -1532,14 +1532,9 @@ class Compiler:
         
         return loop, objNames
     
-    def __dynamicStepOne(self, tokens : Tokens, tabs):
+    def __dynamicStepOne(self, tokens : Tokens, tabs, objNames):
         _, expr = self.getUntilNotInExpr(";", tokens, True, advance = False)
         expr = Tokens(self.__getInlineIncDec(expr))
-
-        if self.nextUnchecked:
-            self.nextUnchecked = False
-            self.out += (" " * tabs) + expr.join() + "\n"
-            return None, None
 
         names = []
         while expr.isntFinished():
@@ -1561,6 +1556,16 @@ class Compiler:
                 break
                 
             names.append(Tokens(name).join())
+
+        if self.nextUnchecked:
+            self.nextUnchecked = False
+            self.out += (" " * tabs) + expr.join() + "\n"
+            
+            for name in names:
+                if name in objNames and objNames[name] == "auto" and name in self.autoTypes:
+                    del self.autoTypes[name]
+
+            return None, None
         
         return names, expr
     
@@ -1647,6 +1652,9 @@ class Compiler:
         if not nameToken.tok.isidentifier():
             self.__error(f'invalid identifier name "{nameToken.tok}"', nameToken)
             return
+
+        if type_ == "auto" and nameToken.tok in self.autoTypes:
+            del self.autoTypes[nameToken.tok]
 
         if self.typeMode == "none" and type_ != "untyped":
               objNames[nameToken.tok] = "dynamic"
@@ -1806,22 +1814,21 @@ class Compiler:
         return buf
     
     def __variablesHandler(self, tokens : Tokens, tabs, objNames, autoCheck = True):
-        names, expr = self.__dynamicStepOne(tokens, tabs)
+        names, expr = self.__dynamicStepOne(tokens, tabs, objNames)
         if names is None: return
 
         for name in names:
-            if name in objNames and objNames[name] == "auto" and autoCheck:
+            if autoCheck and name in objNames and objNames[name] == "auto" and name not in self.autoTypes:
                 self.out += (" " * tabs) + f"_OPAL_AUTOMATIC_TYPE_{name}=type({name})\n"
+                self.autoTypes[name] = None
 
         self.out += (" " * tabs) + expr.join() + "\n"
 
         for name in names:
             if name in objNames and objNames[name] != "dynamic":
                 if objNames[name] == "auto":
-                    if autoCheck: self.out += (
-                        (" " * tabs) + f"{name}=_OPAL_CHECK_TYPE_({name},_OPAL_AUTOMATIC_TYPE_{name})\n" + 
-                        (" " * tabs) + "del _OPAL_AUTOMATIC_TYPE_" + name + "\n"
-                    )
+                    if autoCheck:
+                        self.out += (" " * tabs) + f"{name}=_OPAL_CHECK_TYPE_({name},_OPAL_AUTOMATIC_TYPE_{name})\n"
                 else:
                     self.out += (" " * tabs) + f"{name}=_OPAL_CHECK_TYPE_({name},{objNames[name]})\n"
     
@@ -1905,7 +1912,7 @@ class Compiler:
                     self.__error('unknown statement or identifier', first)
                     continue
 
-                names, _ = self.__dynamicStepOne(tokens.copy(), tabs)
+                names, _ = self.__dynamicStepOne(tokens.copy(), tabs, objNames)
                 if names is None: 
                     self.__warning("cannot find any variables to convert. it is recommended to remove the type conversion", next)
                     continue
@@ -1914,7 +1921,9 @@ class Compiler:
                     if name in objNames:
                         objNames[name] = type_
 
-                        if type_ not in ("dynamic", "auto"):
+                        if   type_ == "auto":
+                            del self.autoTypes[name]
+                        elif type_ != "dynamic":
                             self.out += (" " * tabs) + name + ":" + type_ + "\n"
 
                 self.__variablesHandler(tokens, tabs, objNames, False)
@@ -2091,6 +2100,7 @@ class Compiler:
         self.useIdentifiers = {}
         self.macros         = {}
         self.consts         = {}
+        self.autoTypes      = {}
 
         self.out            = ""
         self.hadError       = False
