@@ -22,13 +22,25 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import os, sys, py_compile, colorama
-from importlib import import_module
-from timeit    import default_timer
-from pathlib   import Path
-from pydoc     import locate
+import os, sys, colorama, cythonbuilder, shutil
+from importlib  import import_module
+from timeit     import default_timer
+from pathlib    import Path
+from pydoc      import locate
 
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
+CYTHON_TYPES = ("short", "int", "long", "long long", "float", "double", "long double")
+CYTHON_FN_TYPES = CYTHON_TYPES + ("void", "list", "object", "str", "tuple", "bool", "complex", "range", "bytes", "bytearray", "dict")
+ILLEGAL_CHARS = ("-", "(", ")", "[", "]", "{", "}", "!")
+
+CYTHON_TO_PY_TYPES = {
+    "short": "int",
+    "long": "int",
+    "long long": "int",
+    "double": "float",
+    "long double": "float",
+    "void": "None"
+}
 
 class NameStack:
     def __init__(self):
@@ -48,6 +60,20 @@ class NameStack:
 
             if curr[1] == item:
                 return curr
+            
+    def lookforBeforeFn(self, item):
+        array = self.array.copy()
+
+        while len(array) > 0:
+            curr = array.pop()
+
+            if curr[1] in ("fn", "cfn"):
+                return True
+
+            if curr[1] == item:
+                return False
+            
+        return True
 
     def getCurrentLocation(self):
         array = self.array.copy()
@@ -63,10 +89,11 @@ class NameStack:
             match name[1]:
                 case "file":
                     out += name[0] + ": "
-                case "fn":
+                case "fn" | "cfn":
                     out += name[0] + "()."
                 case "macro":
                     out += f"($call {name[0]})."
+                case "conditional": pass
                 case _:
                     out += name[0] + "."
 
@@ -488,6 +515,7 @@ class Compiler:
 
             args = Tokens(args)
             internalVars = []
+            usedCyTypes  = None
             if len(args.tokens) != 0:
                 while True:
                     next = args.next()
@@ -503,9 +531,13 @@ class Compiler:
                     next = args.peek()
                     if next is not None and next.tok == ":":
                         args.next()
+                        typeTok = args.peek()
                         next, type_ = self.getUntilNotInExpr(("=", ","), args, True, False, False)
                         if next != "" and next.tok in ("=", ","): args.pos -= 1
                         type_ = Tokens(type_).join()
+
+                        if type_ in CYTHON_TO_PY_TYPES:
+                            usedCyTypes = typeTok
                     else:
                         type_ = "dynamic"
 
@@ -532,13 +564,13 @@ class Compiler:
                             next = args.next()
 
                     if next is None: break
-                
-            argsString = args.join()
 
+            argsString = args.join()
+                
             if self.nextAbstract:
                 self.nextAbstract = False
 
-                self.newObj(objNames, name, "untyped")
+                self.newObj(objNames, name, "dynamic")
 
                 peek = tokens.peek()
                 if peek is None:
@@ -581,7 +613,7 @@ class Compiler:
 
                 return loop, objNames
             
-            self.newObj(objNames, name, "untyped")
+            self.newObj(objNames, name, "dynamic")
         
             peek = tokens.peek()
             if peek is None:
@@ -598,6 +630,28 @@ class Compiler:
                 if retType == "auto":
                     self.__error('"auto" cannot be used as a return type', next)
                     retType = "dynamic"
+
+                if self.__cy:
+                    if (not hasThis) and translates == "def" and retType in CYTHON_FN_TYPES:
+                        canCpdef = True
+                        for variable in internalVars:
+                            if variable[1] not in CYTHON_FN_TYPES:
+                                canCpdef = False
+                                break
+
+                        if canCpdef: 
+                            translates = "cpdef"
+                        else:
+                            usedCyTypes = None
+                elif retType in CYTHON_TO_PY_TYPES:
+                    retType = CYTHON_TO_PY_TYPES[retType]
+
+                if usedCyTypes:
+                    if hasThis:
+                        self.__error("unable to use Cython types in a method", usedCyTypes)
+                    else:
+                        self.__error("unable to use Cython types in a function that cannot be automatically optimized. \
+                                      Switch to opal/Python types or change the function definition", usedCyTypes)
         else:
             argsString = ""
             
@@ -619,7 +673,10 @@ class Compiler:
 
             self.newObj(objNames, name, "class")
 
-        if translates == "class" and argsString == "":
+        if translates == "cpdef":
+            argsString = ",".join([f"{t} {n}" for n, t in internalVars])
+            self.out += (" " * tabs) + "cpdef " + retType + " " + name.tok + "(" + argsString + "):"
+        elif translates == "class" and argsString == "":
             self.out += (" " * tabs) + translates + " " + name.tok + "(OpalObject):"
         elif translates == "class" or retType == "dynamic":
             self.out += (" " * tabs) + translates + " " + name.tok + "(" + argsString + "):"
@@ -645,7 +702,11 @@ class Compiler:
         for var in internalVars:
             intObjs[var[0]] = var[1]
 
-        self.__nameStack.push((name.tok, "fn", retType))
+        if translates == "cpdef":
+            self.__nameStack.push((name.tok, "cfn"))
+        else:
+            self.__nameStack.push((name.tok, "fn", retType))
+
         self.__compiler(block, tabs + 1, loop, intObjs)
         self.__nameStack.pop()
         return loop, objNames
@@ -657,6 +718,17 @@ class Compiler:
             type_ = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
         else:
             type_ = next.tok
+        
+        cyType = False
+        if (
+            self.__cy and (self.nextStatic or self.static) and loop is None and 
+            self.__nameStack.lookforBeforeFn("conditional") and 
+            self.__nameStack.lookforBeforeFn("class")
+        ):
+            self.nextStatic = False
+            cyType = type_ in CYTHON_TYPES
+        elif type_ in CYTHON_TO_PY_TYPES:
+            type_ = CYTHON_TO_PY_TYPES[type_]
 
         _, variablesDef = self.getUntilNotInExpr(";", tokens, True, advance = False)
         variablesDef = Tokens(variablesDef)
@@ -665,11 +737,16 @@ class Compiler:
 
         while True:
             name = next
-            self.newObj(objNames, name, type_)
+
+            if cyType: self.newObj(objNames, name, "dynamic")
+            else:      self.newObj(objNames, name, type_)
 
             if not variablesDef.isntFinished(): 
                 if type_ not in ("dynamic", "auto"):
-                    self.out += (" " * tabs) + name.tok + ":" + type_ + "\n"
+                    if cyType:
+                        self.out += (" " * tabs) + "cdef " + type_ + " " + name.tok + "\n"
+                    else:
+                        self.out += (" " * tabs) + name.tok + ":" + type_ + "\n"
 
                 if type_ == "auto":
                     self.__error(f'auto-typed variables cannot be defined without being assigned', name) 
@@ -683,6 +760,8 @@ class Compiler:
 
                 if type_ in ("auto", "dynamic") or self.typeMode == "none": 
                     self.out += (" " * tabs) + name.tok + "=" + value + "\n"
+                elif cyType:
+                    self.out += (" " * tabs) + "cdef " + type_ + " " + name.tok + "=" + value + "\n"
                 else:
                     if self.eval:
                         try:    evaluated = locate(type_)(eval(value))
@@ -700,7 +779,10 @@ class Compiler:
                     self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_CHECK_TYPE_({value},{type_})\n"
             elif next.tok == ",": 
                 if type_ not in ("dynamic", "auto"):
-                    self.out += (" " * tabs) + name.tok + ":" + type_ + "\n"
+                    if cyType:
+                        self.out += (" " * tabs) + "cdef " + type_ + " " + name.tok + "\n"
+                    else:
+                        self.out += (" " * tabs) + name.tok + ":" + type_ + "\n"
 
                 next = variablesDef.next()
 
@@ -742,6 +824,11 @@ class Compiler:
         kw = tokens.last()
 
         fnProperties = self.__nameStack.lookfor("fn")
+        if fnProperties is None and self.__cy:
+            cyFunction = True
+            fnProperties = self.__nameStack.lookfor("cfn")
+        else: cyFunction = False
+
         if fnProperties is None:
             self.__error('cannot use "return" outside of a function', kw)
             return loop, objNames
@@ -754,7 +841,7 @@ class Compiler:
         
         _, val = self.getUntilNotInExpr(";", tokens, True, advance = False)
 
-        if self.nextUnchecked or fnProperties[2] == "dynamic" or self.typeMode == "none":
+        if cyFunction or self.nextUnchecked or fnProperties[2] == "dynamic" or self.typeMode == "none":
             if self.nextUnchecked: self.nextUnchecked = False
             
             self.out += (" " * tabs) + Tokens([Token("return")] + val).join() + "\n"
@@ -839,6 +926,27 @@ class Compiler:
 
         return loop, objNames
     
+    def __static(self, tokens : Tokens, tabs, loop, objNames):
+        next = tokens.peek()
+        if next.tok == ":":
+            tokens.next()
+            self.nextStatic = True
+        elif next.tok == "{":
+            tokens.next()
+            block = self.getSameLevelParenthesis("{", "}", tokens)
+
+            if len(block) == 0:
+                return loop, objNames
+            
+            backStatic = self.static
+            self.static = True
+            loop, objNames = self.__compiler(Tokens(block), tabs, loop, objNames)
+            self.static = backStatic
+        else: 
+            self.__error('expecting ":" or "{" after "static"', next)
+
+        return loop, objNames
+    
     def __abstract(self, tokens : Tokens, tabs, loop, objNames):
         next = tokens.peek()
         if next.tok != ":":
@@ -883,7 +991,7 @@ class Compiler:
             modl = import_module(self.lastPackage)
             for name in dir(modl):
                 if callable(getattr(modl, name)):
-                    self.newObj(objNames, Token(name), "untyped")
+                    self.newObj(objNames, Token(name), "dynamic")
 
             self.lastPackage = ""
             self.out += "import *\n"
@@ -902,7 +1010,7 @@ class Compiler:
             if len(nameBuf) != 0: name.tok = Tokens(nameBuf).join()
 
             if not imports.isntFinished():
-                self.newObj(objNames, name, "untyped")
+                self.newObj(objNames, name, "dynamic")
                 break
                     
             next = imports.next()
@@ -913,7 +1021,7 @@ class Compiler:
                 if imports.isntFinished():
                     next = imports.next()
 
-            self.newObj(objNames, name, "untyped")
+            self.newObj(objNames, name, "dynamic")
 
             if not imports.isntFinished(): break
 
@@ -1020,7 +1128,7 @@ class Compiler:
             return loop, objNames
         
         return fn
-    
+        
     def __main(self, tokens : Tokens, tabs, loop, objNames):
         keyw = tokens.last()
 
@@ -1034,12 +1142,24 @@ class Compiler:
             if self.flags["mainfn"]:
                 self.__error("main function can only be defined once", keyw)
                 return loop, objNames
-            
-            self.flags["mainfn"] = True
+            else:
+                self.flags["mainfn"] = True
 
-            return self.__simpleBlock("def _OPAL_MAIN_FUNCTION_()", "main()", ("main", "fn"))(tokens, tabs, loop, objNames)
+            if self.__cy:
+                return self.__simpleBlock("cpdef void _OPAL_MAIN_FUNCTION_()", "main()", ("main", "cfn"))(tokens, tabs, loop, objNames)
+            else:
+                return self.__simpleBlock("def _OPAL_MAIN_FUNCTION_()", "main()", ("main", "fn"))(tokens, tabs, loop, objNames)
         
-        return self.__simpleBlock("if __name__=='__main__'", "main")(tokens, tabs, loop, objNames)
+        if self.__cy:
+            self.checkDirectNext("{", '"main"', tokens)
+            block = self.getSameLevelParenthesis("{", "}", tokens)
+
+            if len(block) == 0:
+                return loop, objNames
+            
+            return self.__compiler(Tokens(block), tabs, loop, objNames)
+        else:
+            return self.__simpleBlock("if __name__=='__main__'", "main")(tokens, tabs, loop, objNames)
     
     def __namespace(self, tokens : Tokens, tabs, loop, objNames):
         next = tokens.next()
@@ -1209,7 +1329,8 @@ class Compiler:
 
             if len(op) == 0:
                 op = [Token("==", idLine, idPos, tokens)]
-        else: op = None
+        elif self.__cy: op = [Token("==")]
+        else:           op = None
 
         _, value = self.getUntilNotInExpr("{", tokens, True, advance = False)
         block = self.getSameLevelParenthesis("{", "}", tokens)
@@ -1229,7 +1350,9 @@ class Compiler:
         if op is None:
             self.out += (" " * tabs) + Tokens([Token("match")] + value).join() +":\n"
 
+        self.__nameStack.push((None, "conditional"))
         loop, objNames = self.__matchLoop(Tokens(block), tabs, loop, objNames, value, op, unchecked)
+        self.__nameStack.pop()
 
         if not unchecked:
             self.out += (" " * tabs) + f"del _OPAL_MATCHED_{matched}\n"
@@ -1338,7 +1461,7 @@ class Compiler:
         if len(value) > 1:
             self.__error('property name should contain only one token', value[0])
         
-        self.newObj(objNames, value[0], "untyped")
+        self.newObj(objNames, value[0], "dynamic")
 
         if len(block) == 0:
             return loop, objNames
@@ -1523,7 +1646,7 @@ class Compiler:
             
             self.out += "\n"
 
-            self.newObj(objNames, value[0], "untyped")
+            self.newObj(objNames, value[0], "dynamic")
 
             inTabs = tabs + 1
 
@@ -1576,6 +1699,8 @@ class Compiler:
         self.__nameStack = NameStack()
 
         self.eval     = True
+        self.static   = False
+        self.__cy     = False
         self.typeMode = "hybrid"
 
         self.statementHandlers = {
@@ -1611,9 +1736,9 @@ class Compiler:
             "try":                 self.__simpleBlock("try", "try"),
             "catch":               self.__block("except", "catch"),
             "success":             self.__simpleBlock("else", "success"),
-            "else":                self.__simpleBlock("else", "else"),
-            "if":                  self.__block("if"),
-            "elif":                self.__block("elif"),
+            "else":                self.__simpleBlock("else", "else", (None, "conditional")),
+            "if":                  self.__block("if", push = (None, "conditional")),
+            "elif":                self.__block("elif", push = (None, "conditional")),
             "while":               self.__block("while", GenericLoop()),
             "with":                self.__block("with"),
             "do":                  self.__do,
@@ -1622,7 +1747,8 @@ class Compiler:
             "match":               self.__match,
             "enum":                self.__enum,
             "abstract":            self.__abstract,
-            "ignore":              self.__ignore
+            "ignore":              self.__ignore,
+            "static":              self.__static
         }
 
     def __lineWarn(self, msg, line):
@@ -1656,7 +1782,7 @@ class Compiler:
         if type_ == "auto" and nameToken.tok in self.autoTypes:
             del self.autoTypes[nameToken.tok]
 
-        if self.typeMode == "none" and type_ != "untyped":
+        if self.typeMode == "none":
               objNames[nameToken.tok] = "dynamic"
         else: objNames[nameToken.tok] = type_
 
@@ -2091,6 +2217,8 @@ class Compiler:
                     inPy = True
                 case "restore":
                     inPy = False
+                case "args":
+                    self.handleArgs(eval(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()))
                 case _:
                     self.__lineWarn("unknown or incomplete precompiler instruction. ignoring line", i)
 
@@ -2108,12 +2236,16 @@ class Compiler:
         self.__manualSig   = True
         self.nextAbstract  = False
         self.nextUnchecked = False
+        self.nextStatic    = False
         self.lastPackage   = ""
 
         self.__resetFlags()
 
-    def compile(self, section):
+    def compile(self, section, top = None):
         self.reset()
+
+        if top is not None:
+            self.out += top + "\n"
 
         match self.typeMode:
             case "hybrid":
@@ -2135,34 +2267,72 @@ class Compiler:
         self.__compiler(self.tokens, 0, None, {})
 
         if self.flags["mainfn"]:
-            self.out += 'if __name__=="__main__":_OPAL_MAIN_FUNCTION_()\n'
+            if self.__cy:
+                self.out += '_OPAL_MAIN_FUNCTION_()\n'
+            else:
+                self.out += 'if __name__=="__main__":_OPAL_MAIN_FUNCTION_()\n'
 
         if self.hadError: return ""
         else:             return self.out
 
-    def compileFile(self, fileIn, top = ""):
+    def compileFile(self, fileIn, top = "", pyTop = None):
         self.__nameStack.push((fileIn, "file"))
-        return self.compile(top + "\n" + self.readFile(fileIn))
+        return self.compile(top + "\n" + self.readFile(fileIn), pyTop)
 
-    def compileToPY(self, fileIn, fileOut, top = ""):
-        result = self.compileFile(fileIn, top)
+    def __compileWrite(self, fileIn, fileOut, top, pyTop = None):
+        result = self.compileFile(fileIn, top, pyTop)
 
         if result != "":
             with open(fileOut, "w") as txt:
                 txt.write(result)
+    
+    def compileToPY(self, fileIn, fileOut, top = ""):
+        self.__compileWrite(fileIn, fileOut, top)
+
+    def compileToPYX(self, fileIn, fileOut, top = ""):
+        self.__cy = True
+        self.__compileWrite(fileIn, fileOut, top, "cimport cython")
+
+    def handleArgs(self, args: list):
+        if "--noeval" in args:
+            self.eval = False
+            args.remove("--noeval")
+
+        if "--static" in args:
+            self.static = True
+            args.remove("--static")
+
+        if "--nostatic" in args:
+            args.remove("--nostatic")
+
+            if self.static:
+                print('This program cannot be compiled with the "--static" flag.')
+                quit()
+
+        if "--type-mode" in args:
+            idx = args.index("--type-mode")
+            args.pop(idx)
+
+            mode = args.pop(idx).lower()
+            if mode in ("hybrid", "check", "force", "none"):
+                self.typeMode = mode
+            else:
+                print(f'invalid type mode "{mode}". supported types are hybrid, check, force, none')
 
 def getHomeDirFromFile(file):
     return str(Path(file).parent.absolute()).replace("\\", "\\\\\\\\")
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.4.2 - thatsOven")
+        print("opal compiler v2023.4.6 - thatsOven")
     else:
         compiler = Compiler()
+        compiler.handleArgs(sys.argv)
 
-        if "--noeval" in sys.argv:
-            compiler.eval = False
-            sys.argv.remove("--noeval")
+        if "--debug" in sys.argv:
+            debug = True
+            sys.argv.remove("--debug")
+        else: debug = False
 
         if "--dir" in sys.argv:
             findDir = False
@@ -2175,20 +2345,26 @@ if __name__ == "__main__":
         else:
             findDir = True
 
-        if "--type-mode" in sys.argv:
-            findDir = False
-            idx = sys.argv.index("--type-mode")
-            sys.argv.pop(idx)
+        if sys.argv[1] == "pyxcompile":
+            if len(sys.argv) == 2:
+                print('input file required for command "pyxcompile"')
+                sys.exit(1)
 
-            mode = sys.argv.pop(idx).lower()
-            if mode in ("hybrid", "check", "force", "none"):
-                compiler.typeMode = mode
+            time = default_timer()
+
+            if findDir:
+                drt = getHomeDirFromFile(sys.argv[2])
+                compiler.preConsts["HOME_DIR"] = f'"{drt}"'
+                top = 'new dynamic HOME_DIR="' + drt + '";'
+
+            if len(sys.argv) == 3:
+                compiler.compileToPYX(sys.argv[2].replace("\\", "\\\\"), "output.pyx", top)
             else:
-                print(f'invalid type mode "{mode}". supported types are hybrid, check, force, none')
-        else:
-            findDir = True
+                compiler.compileToPYX(sys.argv[2].replace("\\", "\\\\"), sys.argv[3].replace("\\", "\\\\"), top)
 
-        if sys.argv[1] == "pycompile":
+            if not compiler.hadError:
+                print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
+        elif sys.argv[1] == "pycompile":
             if len(sys.argv) == 2:
                 print('input file required for command "pycompile"')
                 sys.exit(1)
@@ -2207,7 +2383,6 @@ if __name__ == "__main__":
 
             if not compiler.hadError:
                 print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
-
         elif sys.argv[1] == "compile":
             if len(sys.argv) == 2:
                 print('input file required for command "compile"')
@@ -2218,17 +2393,41 @@ if __name__ == "__main__":
             if findDir:
                 drt = getHomeDirFromFile(sys.argv[2])
                 compiler.preConsts["HOME_DIR"] = f'"{drt}"'
-                top = 'new dynamic HOME_DIR="' + drt + '";'
+                top = 'new str HOME_DIR="' + drt + '";'
 
-            compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), "tmp.py", top)
+            name = os.path.basename(sys.argv[2]).split(".")[0]
+            for char in ILLEGAL_CHARS:
+                name = name.replace(char, "_")
+
+            compiler.compileToPYX(sys.argv[2].replace("\\", "\\\\"), f"{name}.pyx", top)
 
             if not compiler.hadError:
-                if len(sys.argv) == 3:
-                    py_compile.compile("tmp.py", "output.pyc")
+                print("opal -> Cython: Done in " + str(round(default_timer() - time, 4)) + " seconds")
+                cythonbuilder.cy_init()
+
+                try:
+                    cythonbuilder.cy_build([f"{name}.pyx"], debug, True)
+                except Exception as e:
+                    print("Compilation failed.")
+                    ok = False
                 else:
-                    py_compile.compile("tmp.py", sys.argv[3].replace("\\", "\\\\"))
-                os.remove("tmp.py")
-                print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
+                    ok = True
+
+                if os.path.exists("ext"):   shutil.rmtree("ext")
+                if os.path.exists("build"): shutil.rmtree("build")
+                if os.path.exists(f"{name}.pyx"): os.remove(f"{name}.pyx")
+                if os.path.exists(f"{name}.c"):   os.remove(f"{name}.c")
+
+                if ok:
+                    if len(sys.argv) == 3:
+                        filename = "output.py"
+                    else:
+                        filename = sys.argv[3].replace("\\", "\\\\")
+
+                    with open(filename, "w") as py:
+                        py.write(f"import {name}")
+
+                    print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
         else:
             sys.argv[1] = sys.argv[1].replace("\\", "\\\\")
             if not os.path.exists(sys.argv[1]):

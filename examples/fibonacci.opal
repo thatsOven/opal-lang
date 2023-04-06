@@ -1,4 +1,5 @@
 package opal: import *;
+$args ["--static"]
 
 new function getInt() int {
     while True {
