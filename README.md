@@ -1,7 +1,7 @@
 ﻿![](https://cdn.discordapp.com/attachments/724718756713988187/814628164256137266/unknown.png)thanks to aphitorite for the beautiful logo!
     
 # opal 
-opal is a transcompiled programming language based on Python. 
+opal is a transcompiled programming language based on Python and Cython. 
 
 NOTE: due to how the compiler works, it might not detect some syntax errors, especially in expressions.
 # Compiler usage
