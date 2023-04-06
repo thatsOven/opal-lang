@@ -20,12 +20,25 @@ NOTE: due to how the compiler works, it might not detect some syntax errors, esp
 - `--noeval`
 	- Avoids evaluating constant expressions when defining new variables
 	- **Usage**: --noeval
+- `--dir`
+	- Specifies a custom `HOME_DIR` variable.
+	- **Usage**: --dir path
+- `--static`
+	- Treats every variable as it cannot change types. Useful for optimization purposes.
+	- **Usage**: --static
+- `--nostatic`
+	- Specifies that a program cannot be compiled with the `--static` flag. It's not meant to be used via terminal.
+- `--debug`
+	- Saves the Cython annotations file when compiling for debugging purposes.
+	- **Usage**: --debug
 # Installation
 To properly run opal code, you will need to install these Python modules:
 ```
 pygame
 numpy
 typeguard
+Cython
+cythonbuilder
 ```
 opal only supports Python 3.10 and upper.
 # Runner
@@ -341,6 +354,16 @@ new function add(a: int, b: str | int) int {
 	return str(a) + b;
 }
 ```
+### `static`
+The `static` flag is used to indicate whether a variable or a block of variables will not change type. This is used to apply optimizations during compilation. Example:
+```
+static {
+	new int a;
+	new float b = 2.0;
+}
+
+static: new int c = 3;
+```
 ### `namespace`
 Creates a namespace. Effectively just a class that can't inherit from other classes and can't be instantiated.
 ```
@@ -456,7 +479,15 @@ if a != b {
 	}
 }
 ```
-
+### `$args`
+Passes the compiler some default arguments. Supported arguments are:
+```
+--noeval, --static, --nostatic, --type-mode
+```
+Example:
+```
+$args ["--static", "--type-mode", "check"]
+```
 # Operators
 Since opal directly passes expressions to Python, that is, it doesn't parse them, Python operators are all usable, with
 a few additions:
