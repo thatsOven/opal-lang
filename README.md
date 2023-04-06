@@ -6,8 +6,9 @@ opal is a transcompiled programming language based on Python.
 NOTE: due to how the compiler works, it might not detect some syntax errors, especially in expressions.
 # Compiler usage
 [ ] = optional
-* To compile to a `.py` file: `opalc.py pycompile input_file [output_file]`
-* To compile to a `.pyc` file: `opalc.py compile input_file [output_file]`
+* To compile to a Python `.py` file: `opalc.py pycompile input_file [output_file]`
+* To compile to a Cython `.pyx` file: `opalc.py pyxcompile input_file [output_file]`
+* To compile: `opalc.py compile input_file [output_file]`
 * To directly run opal source: `opalc.py file_name`
 # Command line arguments
 - `--type-mode`
