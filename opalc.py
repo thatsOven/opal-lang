@@ -664,6 +664,7 @@ class Compiler:
                             translates = "cpdef"
                             usedCyTypes = None
 
+                            cyInternalVars = internalVars.copy()
                             for i in range(len(internalVars)):
                                 internalVars[i] = (internalVars[i][0], "dynamic")
 
@@ -697,7 +698,7 @@ class Compiler:
             self.newObj(objNames, name, "class")
 
         if translates == "cpdef":
-            argsString = ",".join([f"{t} {n}" for n, t in internalVars])
+            argsString = ",".join([f"{t} {n}" for n, t in cyInternalVars])
             self.out += (" " * tabs) + "cpdef " + retType + " " + name.tok + "(" + argsString + "):"
         elif translates == "class" and argsString == "":
             self.out += (" " * tabs) + translates + " " + name.tok + "(OpalObject):"
