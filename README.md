@@ -12,10 +12,10 @@ NOTE: due to how the compiler works, it might not detect some syntax errors, esp
 * To directly run opal source: `opalc.py file_name`
 # Command line arguments
 - `--type-mode`
-	- Selects a default typing mode for the script. Options are:
+	- Selects a default typing mode for the file. Options are:
 		- `hybrid`: The default one. Forces the type when it doesn't create problems, checks otherwise;
 		- `check`: Checks types. Some conversions won't be automatic (for example, assigning a `tuple` to a `list` typed variable won't convert it automatically);
-		- `force`: Always forces types. Can break programs as forced typing doesn't always work properly;
+		- `force`: Always forces types. Can break programs as forced typing can't always be performed;
 		- `none`: Uses dynamic typing for all variables.
 	- **Usage**: --type-mode mode
 - `--noeval`
