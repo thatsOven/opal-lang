@@ -156,6 +156,9 @@ class Token:
     def warning(self, msg, location):
         self.__message("warning", colorama.Fore.LIGHTYELLOW_EX, msg, location)
 
+    def note(self, msg, location):
+        self.__message("note", colorama.Fore.LIGHTBLUE_EX, msg, location)
+
 class Tokens:
     def __init__(self, source):
         if   type(source) is str:
@@ -448,6 +451,7 @@ class Tokens:
 class Compiler:
     def __new(self, tokens : Tokens, tabs, loop, objNames):
         next = tokens.next()
+        objType = next
 
         hasThis  = False
         isRecord = False
@@ -493,6 +497,10 @@ class Compiler:
                 translates = "class"
             case _:
                 return self.__newVar(tokens, tabs, loop, objNames)
+            
+        if self.nextUnchecked:
+            self.nextUnchecked = False
+            self.__error('"unchecked" flag is not effective on functions, methods, records and classes', objType)
 
         name = tokens.next()
 
@@ -570,11 +578,15 @@ class Compiler:
             if self.nextAbstract:
                 self.nextAbstract = False
 
+                if self.nextStatic:
+                    self.nextStatic = False
+                    self.__error('cannot use "static" flag on an abstract method', objType)
+
                 self.newObj(objNames, name, "dynamic")
 
                 peek = tokens.peek()
                 if peek is None:
-                    self.__error('invalid syntax: expecting ";" or type identifier')
+                    self.__error('invalid syntax: expecting ";" or type identifier', next)
                     return loop, objNames
 
                 if peek.tok == ";":
@@ -596,6 +608,10 @@ class Compiler:
                 return loop, objNames
             
             if isRecord:
+                if self.nextStatic:
+                    self.nextStatic = False
+                    self.__error('cannot use "static" flag on a record', objType)
+
                 self.newObj(objNames, name, "class")
 
                 next = self.checkDirectNext(";", "record definition", tokens)
@@ -617,7 +633,7 @@ class Compiler:
         
             peek = tokens.peek()
             if peek is None:
-                self.__error('invalid syntax: expecting "{" or type identifier')
+                self.__error('invalid syntax: expecting "{" or type identifier', next)
                 return loop, objNames
 
             if peek.tok == "{":
@@ -692,7 +708,17 @@ class Compiler:
         
         if translates == "class":
             self.__nameStack.push((name.tok, "class"))
-            self.__compiler(block, tabs + 1, loop, objNames)
+
+            if self.nextStatic:
+                self.nextStatic = False
+
+                backStatic = self.static
+                self.static = True
+                self.__compiler(block, tabs + 1, loop, objNames)
+                self.static = backStatic
+            else:
+                self.__compiler(block, tabs + 1, loop, objNames)
+
             self.__nameStack.pop()
             return loop, objNames
 
@@ -705,12 +731,22 @@ class Compiler:
         else:
             self.__nameStack.push((name.tok, "fn", retType))
 
-        self.__compiler(block, tabs + 1, loop, intObjs)
+        if self.nextStatic:
+            self.nextStatic = False
+
+            backStatic = self.static
+            self.static = True
+            self.__compiler(block, tabs + 1, loop, intObjs)
+            self.static = backStatic
+        else:
+            self.__compiler(block, tabs + 1, loop, intObjs)
+
         self.__nameStack.pop()
         return loop, objNames
     
     def __newVar(self, tokens : Tokens, tabs, loop, objNames):
         next = tokens.last()
+        typeTok = next
 
         if next.tok == "(":
             type_ = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
@@ -719,14 +755,30 @@ class Compiler:
         
         cyType = False
         if (
-            self.__cy and (self.nextStatic or self.static) and loop is None and 
-            self.__nameStack.lookforBeforeFn("conditional") and 
-            self.__nameStack.lookforBeforeFn("class")
+            self.__cy and (self.nextStatic or self.static) and
+            self.__nameStack.lookforBeforeFn("class") and 
+            not self.nextUnchecked
         ):
-            self.nextStatic = False
-            cyType = type_ in CYTHON_TYPES
-        elif type_ in CYTHON_TO_PY_TYPES:
+            if self.nextStatic: self.nextStatic = False
+
+            if type_ in CYTHON_TYPES:
+                if loop is not None:
+                    self.__note("consider moving these declarations outside of a loop so they can be automatically optimized", typeTok)
+                elif not self.__nameStack.lookforBeforeFn("conditional"):
+                    self.__note("consider moving these declarations outside of a conditional so they can be automatically optimized", typeTok)
+                else:
+                    cyType = True
+        
+        if (not cyType) and type_ in CYTHON_TO_PY_TYPES:
             type_ = CYTHON_TO_PY_TYPES[type_]
+
+        if self.nextUnchecked:
+            self.nextUnchecked = False
+            unchecked = True
+
+            if type_ in ("auto", "dynamic"):
+                self.__error('"unchecked" flag is not effective on "auto" and "dynamic" typing', typeTok)
+        else: unchecked = False
 
         _, variablesDef = self.getUntilNotInExpr(";", tokens, True, advance = False)
         variablesDef = Tokens(variablesDef)
@@ -756,27 +808,42 @@ class Compiler:
                 next, value = self.getUntilNotInExpr(",", variablesDef, True, False)
                 value = Tokens(value).join()
 
-                if type_ in ("auto", "dynamic") or self.typeMode == "none": 
-                    self.out += (" " * tabs) + name.tok + "=" + value + "\n"
-                elif cyType:
+                if cyType:
                     self.out += (" " * tabs) + "cdef " + type_ + " " + name.tok + "=" + value + "\n"
                 else:
-                    if self.eval:
-                        try:    evaluated = locate(type_)(eval(value))
-                        except: pass
-                        else:
-                            code = name.tok + ":" + type_ + "=" + str(evaluated)
+                    dyn = unchecked or type_ in ("auto", "dynamic") or self.typeMode == "none"
 
-                            try:    exec(code)
+                    if self.eval:
+                        try:
+                            located = locate(type_)
+                        except:
+                            self.__error(f'unable to locate type "{type_}"', typeTok)
+                        else:
+                            try:
+                                if dyn: evaluated = eval(value)
+                                else:   evaluated = located(eval(value))
                             except: pass
-                            else:   
-                                self.out += (" " * tabs) + code + "\n"
-                                if next == "": break
-                                continue
+                            else:
+                                if dyn: code = name.tok + "=" + str(evaluated)
+                                else:   code = name.tok + ":" + type_ + "=" + str(evaluated)
+
+                                try:    exec(code)
+                                except: pass
+                                else:   
+                                    if dyn: ok = eval(value) == evaluated
+                                    else:   ok = located(eval(value)) == evaluated
+
+                                    if ok:
+                                        self.out += (" " * tabs) + code + "\n"
+                                        if next == "": break
+                                        continue
                     
-                    self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_CHECK_TYPE_({value},{type_})\n"
+                    if dyn:
+                        self.out += (" " * tabs) + name.tok + "=" + value + "\n"
+                    else:
+                        self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_CHECK_TYPE_({value},{type_})\n"
             elif next.tok == ",": 
-                if type_ not in ("dynamic", "auto"):
+                if (not unchecked) and type_ not in ("dynamic", "auto"):
                     if cyType:
                         self.out += (" " * tabs) + "cdef " + type_ + " " + name.tok + "\n"
                     else:
@@ -795,6 +862,20 @@ class Compiler:
     
     def __not(self, tokens : Tokens, tabs, loop, objNames):
         _, var = self.getUntilNotInExpr(";", tokens, True, advance = False)
+
+        last = tokens.last()
+
+        if self.nextUnchecked:
+            self.nextUnchecked = False
+            self.__error('"unchecked" flag is not effective on inline boolean inversions', last)
+
+        if self.nextStatic:
+            self.nextStatic = False
+            self.__error('"static" flag is not effective on inline boolean inversions', last)
+
+        if self.nextAbstract:
+            self.nextAbstract = False
+            self.__error('"abstract" flag is not effective on inline boolean inversions', last)
     
         self.out += (" " * tabs) + Tokens(var + [Token("="), Token("not")] + var).join() + "\n"
 
@@ -808,7 +889,22 @@ class Compiler:
         
         return fn
     
+    def __flagsError(self, statement, tok):
+        if self.nextUnchecked:
+            self.nextUnchecked = False
+            self.__error(f'"unchecked" flag is not effective on "{statement}" statement', tok)
+
+        if self.nextStatic:
+            self.nextStatic = False
+            self.__error(f'"static" flag is not effective on "{statement}" statement', tok)
+
+        if self.nextAbstract:
+            self.nextAbstract = False
+            self.__error(f'"abstract" flag is not effective on "{statement}" statement', tok)
+    
     def __quit(self, tokens : Tokens, tabs, loop, objNames):
+        self.__flagsError("quit", tokens.last())
+
         next = tokens.peek()
         if next.tok != ";":
             self.__error('expecting ";" after "quit"', next)
@@ -829,7 +925,14 @@ class Compiler:
 
         if fnProperties is None:
             self.__error('cannot use "return" outside of a function', kw)
-            return loop, objNames
+
+        if self.nextStatic:
+            self.nextStatic = False
+            self.__error('"static" flag is not effective on "return" statement', kw)
+
+        if self.nextAbstract:
+            self.nextAbstract = False
+            self.__error('"abstract" flag is not effective on "return" statement', kw)
 
         next = tokens.peek()
         if next.tok == ";":
@@ -871,6 +974,8 @@ class Compiler:
             self.__error('expecting ";" after "break"', next)
         else: tokens.next()
 
+        self.__flagsError("break", keyw)
+
         if loop is None:
             self.__error('cannot use "break" outside of a loop', keyw)
             return loop, objNames
@@ -888,6 +993,8 @@ class Compiler:
         elif next.tok != ";":
             self.__error('expecting ";" after "continue"', next)
         else: tokens.next()
+
+        self.__flagsError("continue", keyw)
 
         if loop is None:
             self.__error('cannot use "continue" outside of a loop', keyw)
@@ -910,21 +1017,31 @@ class Compiler:
         return fn
     
     def __ignore(self, tokens : Tokens, tabs, loop, objNames):
+        self.__flagsError("ignore", tokens.last())
+
         _, val = self.getUntilNotInExpr(";", tokens, True, advance = False)
         self.out += (" " * tabs) + Tokens([Token("except")] + val + [Token(":pass")]).join() + "\n"
         return loop, objNames
     
     def __unchecked(self, tokens : Tokens, tabs, loop, objNames):
+        kw = tokens.last()
+
         next = tokens.peek()
         if next.tok != ":":
             self.__error('expecting ":" after "unchecked"', next)
         else: tokens.next()
+
+        if self.nextUnchecked:
+            self.__error('"unchecked" flag was used twice. remove this flag', kw)
 
         self.nextUnchecked = True
 
         return loop, objNames
     
     def __static(self, tokens : Tokens, tabs, loop, objNames):
+        if self.nextStatic:
+            self.__error('"static" flag was used twice. remove this flag', tokens.last())
+
         next = tokens.peek()
         if next.tok == ":":
             tokens.next()
@@ -946,6 +1063,9 @@ class Compiler:
         return loop, objNames
     
     def __abstract(self, tokens : Tokens, tabs, loop, objNames):
+        if self.nextAbstract:
+            self.__error('"abstract" flag was used twice. remove this flag', tokens.last())
+
         next = tokens.peek()
         if next.tok != ":":
             self.__error('expecting ":" after "abstract"', next)
@@ -960,6 +1080,8 @@ class Compiler:
         return loop, objNames
     
     def __printReturn(self, tokens : Tokens, tabs, loop, objNames):
+        self.__flagsError("?", tokens.last())
+
         _, val = self.getUntilNotInExpr(";", tokens, True, advance = False)
         strVal = Tokens(val).join()
 
@@ -968,6 +1090,8 @@ class Compiler:
         return loop, objNames
     
     def __package(self, tokens : Tokens, tabs, loop, objNames):
+        self.__flagsError("package", tokens.last())
+
         _, name = self.getUntilNotInExpr(":", tokens, True, advance = False)
         strName = Tokens(name).join()
 
@@ -979,6 +1103,7 @@ class Compiler:
     
     def __import(self, tokens : Tokens, tabs, loop, objNames):
         keyw = tokens.last()
+        self.__flagsError("import", keyw)
         _, imports = self.getUntilNotInExpr(";", tokens, True, advance = False)
         
         if len(imports) == 1 and imports[0].tok == "*":
@@ -1034,6 +1159,7 @@ class Compiler:
     
     def __incDec(self, op):
         def fn(tokens : Tokens, tabs, loop, objNames):
+            self.__flagsError(op * 2, tokens.last())
             _, var = self.getUntilNotInExpr(";", tokens, True, advance = False)
             strVar = Tokens(var).join()
 
@@ -1044,6 +1170,7 @@ class Compiler:
         return fn
     
     def __use(self, tokens : Tokens, tabs, loop, objNames):
+        self.__flagsError("use", tokens.last())
         next = tokens.next()
 
         peek = tokens.peek()
@@ -1130,6 +1257,8 @@ class Compiler:
     def __main(self, tokens : Tokens, tabs, loop, objNames):
         keyw = tokens.last()
 
+        self.__flagsError("main", keyw)
+
         next = tokens.peek()
         if next.tok == "(":
             tokens.next()
@@ -1160,9 +1289,18 @@ class Compiler:
             return self.__simpleBlock("if __name__=='__main__'", "main")(tokens, tabs, loop, objNames)
     
     def __namespace(self, tokens : Tokens, tabs, loop, objNames):
+        kw = tokens.last()
         next = tokens.next()
         self.newObj(objNames, next, "class")
         tmp = tokens.next()
+
+        if self.nextUnchecked:
+            self.nextUnchecked = False
+            self.__error('"unchecked" flag is not effective on "namespace" statement', kw)
+
+        if self.nextAbstract:
+            self.nextAbstract = False
+            self.__error('cannot create abstract namespace', kw)
 
         if tmp.tok != "{":
             self.__error('invalid syntax: expecting "{" after namespace definition')
@@ -1172,9 +1310,21 @@ class Compiler:
             self.flags["namespace"] = True
             self.out = "from libs.std import OpalNamespace\n" + self.out
 
-        return self.__block(f"class", content = [next, Token("(OpalNamespace)")], push = (next.tok, "class"))(tokens, tabs, loop, objNames)
+        if self.nextStatic:
+            self.nextStatic = False
+
+            backStatic = self.static
+            self.static = True
+            self.__block(f"class", content = [next, Token("(OpalNamespace)")], push = (next.tok, "class"))(tokens, tabs, loop, objNames)
+            self.static = backStatic
+        else:
+            self.__block(f"class", content = [next, Token("(OpalNamespace)")], push = (next.tok, "class"))(tokens, tabs, loop, objNames)
+
+        return loop, objNames
     
     def __do(self, tokens : Tokens, tabs, loop, objNames):
+        self.__flagsError("do", tokens.last())
+
         peek = tokens.peek()
 
         if peek.tok == "{":
@@ -1200,6 +1350,16 @@ class Compiler:
         return loop, objNames
     
     def __repeat(self, tokens : Tokens, tabs, loop, objNames):
+        kw = tokens.last()
+
+        if self.nextStatic:
+            self.nextStatic = False
+            self.__error('"static" flag is not effective on "repeat" statement', kw)
+
+        if self.nextAbstract:
+            self.nextAbstract = False
+            self.__error('"abstract" flag is not effective on "repeat" statement', kw)
+
         _, valList = self.getUntilNotInExpr("{", tokens, True, advance = False)
         block = self.getSameLevelParenthesis("{", "}", tokens)
         value = Tokens(valList).join()
@@ -1246,7 +1406,7 @@ class Compiler:
         _, objNames = self.__compiler(Tokens(block), tabs + 1, GenericLoop(), objNames)
         return loop, objNames
     
-    def __matchLoop(self, tokens : Tokens, tabs, loop, objNames, value, op, unchecked):
+    def __matchLoop(self, tokens : Tokens, tabs, loop, objNames, value, op, nocheck):
         if op: kw = "if"
 
         defaultMet = False
@@ -1268,7 +1428,7 @@ class Compiler:
                         if defaultMet:
                             self.__error('cannot use "case" after "default" in an defined operator "match" statement', next)
                         
-                        if unchecked:
+                        if nocheck:
                             loop, objNames = self.__block(
                                 Tokens([Token(kw)] + value + op).join()
                             )(tokens, tabs, loop, objNames)
@@ -1280,7 +1440,7 @@ class Compiler:
 
                         if kw == "if": kw = "elif"
                     else:
-                        if unchecked:
+                        if nocheck:
                             loop, objNames = self.__block("case")(tokens, tabs + 1, loop, objNames)
                         else:
                             loop, objNames = self.__block(
@@ -1297,18 +1457,37 @@ class Compiler:
 
                     defaultMet = True
                 case "found":
-                    if unchecked:
-                        self.__error('cannot use "found" in unchecked "match" statement body', next)
-
                     loop, objNames = self.__simpleBlock(f"if _OPAL_MATCHED_{tabs}", "found")(tokens, tabs, loop, objNames)
-
                     foundMet = True
                 case _:
                     self.__error('invalid identifier in "match" statement body', next)
 
         return loop, objNames
     
+    def __needsChecks(self, tokens: Tokens):
+        while tokens.isntFinished():
+            next = tokens.next()
+            
+            if next.tok.startswith('"""') or next.tok.startswith("'''"):
+                self.out += next.tok + "\n"
+                continue
+
+            match next.tok:
+                case "case":
+                    self.getUntilNotInExpr("{", tokens, True, advance = False)
+                    self.getSameLevelParenthesis("{", "}", tokens)
+                case "default":
+                    self.checkDirectNext("{", '"default"', tokens)
+                    self.getSameLevelParenthesis("{", "}", tokens)
+                case "found": return True
+                case _:
+                    self.__error('invalid identifier in "match" statement body', next)
+
+        return False
+    
     def __match(self, tokens : Tokens, tabs, loop, objNames):
+        self.__flagsError("match", tokens.last())
+
         next = tokens.peek()
         if next.tok == ":":
             idLine = next.line
@@ -1317,11 +1496,7 @@ class Compiler:
 
             next = tokens.next()
             if next.tok != "(":
-                if self.nextUnchecked:
-                    self.nextUnchecked = False
-
                 self.__error('invalid syntax: expecting "(" after "match:"')
-                return loop, objNames
             
             op = self.getSameLevelParenthesis("(", ")", tokens)
 
@@ -1333,15 +1508,12 @@ class Compiler:
         _, value = self.getUntilNotInExpr("{", tokens, True, advance = False)
         block = self.getSameLevelParenthesis("{", "}", tokens)
 
-        unchecked = self.nextUnchecked
-
-        if unchecked: 
-            self.nextUnchecked = False
-
         if len(block) == 0:
             return loop, objNames
         
-        if not unchecked:
+        check = self.__needsChecks(Tokens(block))
+        
+        if check:
             matched = str(tabs)
             self.out += (" " * tabs) + f"_OPAL_MATCHED_{tabs}=False\n"
     
@@ -1349,10 +1521,10 @@ class Compiler:
             self.out += (" " * tabs) + Tokens([Token("match")] + value).join() +":\n"
 
         self.__nameStack.push((None, "conditional"))
-        loop, objNames = self.__matchLoop(Tokens(block), tabs, loop, objNames, value, op, unchecked)
+        loop, objNames = self.__matchLoop(Tokens(block), tabs, loop, objNames, value, op, not check)
         self.__nameStack.pop()
 
-        if not unchecked:
+        if check:
             self.out += (" " * tabs) + f"del _OPAL_MATCHED_{matched}\n"
 
         return loop, objNames
@@ -1453,6 +1625,16 @@ class Compiler:
                     self.__error('invalid identifier in "property" statement body', next)
     
     def __property(self, tokens : Tokens, tabs, loop, objNames):
+        kw = tokens.last()
+
+        if self.nextUnchecked:
+            self.nextUnchecked = False
+            self.__error(f'"unchecked" flag is not effective on "property" statement', kw)
+
+        if self.nextAbstract:
+            self.nextAbstract = False
+            self.__error(f'"abstract" flag is not effective on "property" statement', kw)
+
         _, value = self.getUntilNotInExpr("{", tokens, True, advance = False)
         block = self.getSameLevelParenthesis("{", "}", tokens)
 
@@ -1467,7 +1649,17 @@ class Compiler:
         self.out += (" " * tabs) + Tokens([value[0], Token("="), Token("property()")]).join() + "\n"
 
         self.__nameStack.push((value[0].tok, "property"))
-        self.__propertyLoop(Tokens(block), tabs, loop, objNames, value[0])
+        
+        if self.nextStatic:
+            self.nextStatic = False
+
+            backStatic = self.static
+            self.static = True
+            self.__propertyLoop(Tokens(block), tabs, loop, objNames, value[0])
+            self.static = backStatic
+        else:
+            self.__propertyLoop(Tokens(block), tabs, loop, objNames, value[0])        
+        
         self.__nameStack.pop()
 
         return loop, objNames
@@ -1549,6 +1741,7 @@ class Compiler:
     
     def __for(self, tokens : Tokens, tabs, loop, objNames):
         keyw = tokens.last()
+        self.__flagsError("for", keyw)
         cnt = [x.tok for x in self.getUntilNotInExpr("{", tokens.copy(), True)[1]].count(";")
 
         match cnt:
@@ -1624,6 +1817,8 @@ class Compiler:
         return loop, objNames
     
     def __enum(self, tokens : Tokens, tabs, loop, objNames):
+        self.__flagsError("enum", tokens.last())
+
         _, value = self.getUntilNotInExpr("{", tokens, True, advance = False)
         block = self.getSameLevelParenthesis("{", "}", tokens)
 
@@ -1762,6 +1957,9 @@ class Compiler:
 
     def __warning(self, msg, token : Token):
         token.warning(msg, self.__nameStack.getCurrentLocation())
+
+    def __note(self, msg, token : Token):
+        token.note(msg, self.__nameStack.getCurrentLocation())
 
     def __resetFlags(self):
         self.flags = {
@@ -2391,7 +2589,7 @@ if __name__ == "__main__":
             if findDir:
                 drt = getHomeDirFromFile(sys.argv[2])
                 compiler.preConsts["HOME_DIR"] = f'"{drt}"'
-                top = 'new str HOME_DIR="' + drt + '";'
+                top = 'new dynamic HOME_DIR="' + drt + '";'
 
             name = os.path.basename(sys.argv[2]).split(".")[0]
             for char in ILLEGAL_CHARS:
