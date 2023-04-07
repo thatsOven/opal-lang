@@ -167,13 +167,15 @@ match aVariable {
 	}
 }
 ```
-The other `match` implementation consists in an `elif` chain. It's accessible by specifying the operator to be used.
+The other `match` implementation consists in an `elif` chain. It's accessible by specifying the operator to be used. 
 ```
 match:(!=) aVariable {
 	# cases here
 }
 ```
 if no operator is specified (`match:()`), `==` will be used by default.
+
+NOTE: since Cython doesn't support Python's `match` statement, opal will always fall back to the `elif` chain implementation when compiling.
 ### Loops
 #### `while`
 ```
@@ -329,7 +331,6 @@ main() {
 ### `unchecked`
 The `unchecked` flag is used to ignore typing on an assignment or skip checks on other statements. Statements to which the `unchecked` flag can be applied are:
 - `repeat`: skips the conversion to an absolute int;
-- `match`: skips the steps necessary for the `found` clause to work;
 - `return`: ignores type checking.
 Example:
 ```
@@ -338,13 +339,6 @@ unchecked: a += 2;
 
 unchecked: repeat a {
 	# your code here
-}
-
-unchecked: 
-match a {
-	case 6 {
-		
-	}
 }
 
 new function add(a: int, b: str | int) int {
@@ -364,6 +358,16 @@ static {
 }
 
 static: new int c = 3;
+
+static:
+new function myFunction() {
+	# every variable here will be static
+}
+
+static:
+namespace Test {
+	# every variable here will be static
+}
 ```
 ### `namespace`
 Creates a namespace. Effectively just a class that can't inherit from other classes and can't be instantiated.
