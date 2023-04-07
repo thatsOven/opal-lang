@@ -25,7 +25,7 @@ main() {
     new int n = getInt();
 
     new int a = 0,
-            b = 1, c;
+            b = 1, c, i;
 
     for i = 0; i < n; i++ {
         IO.out(a, IO.endl);
