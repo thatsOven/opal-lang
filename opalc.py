@@ -29,8 +29,12 @@ from pathlib    import Path
 from pydoc      import locate
 
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
-CYTHON_TYPES = ("short", "int", "long", "long long", "float", "double", "long double", "list", "object", "str", "tuple", "dict", "range", "bytes", "bytearray")
-CYTHON_FN_TYPES = CYTHON_TYPES + ("void", "bool", "complex")
+CYTHON_TYPES = (
+    "short", "int", "long", "long long", "float", 
+    "double", "long double", "list", "object", "str", 
+    "tuple", "dict", "range", "bytes", "bytearray", "complex"
+)
+CYTHON_FN_TYPES = CYTHON_TYPES + ("void", "bool")
 ILLEGAL_CHARS = ("-", "(", ")", "[", "]", "{", "}", "!")
 
 CYTHON_TO_PY_TYPES = {
