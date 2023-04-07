@@ -641,7 +641,6 @@ class Compiler:
 
                         if canCpdef: 
                             translates = "cpdef"
-                        else:
                             usedCyTypes = None
                 elif retType in CYTHON_TO_PY_TYPES:
                     retType = CYTHON_TO_PY_TYPES[retType]
@@ -650,8 +649,7 @@ class Compiler:
                     if hasThis:
                         self.__error("unable to use Cython types in a method", usedCyTypes)
                     else:
-                        self.__error("unable to use Cython types in a function that cannot be automatically optimized. \
-                                      Switch to opal/Python types or change the function definition", usedCyTypes)
+                        self.__error("unable to use Cython types in a function that cannot be automatically optimized. Switch to opal/Python types or change the function definition", usedCyTypes)
         else:
             argsString = ""
             
