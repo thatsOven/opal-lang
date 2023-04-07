@@ -21,6 +21,9 @@ NOTE: due to how the compiler works, it might not detect some syntax errors, esp
 - `--noeval`
 	- Avoids evaluating constant expressions when defining new variables
 	- **Usage**: --noeval
+- `--disable-notes`
+	- Disables notes during compilation
+	- **Usage**: --disable-notes
 - `--dir`
 	- Specifies a custom `HOME_DIR` variable.
 	- **Usage**: --dir path

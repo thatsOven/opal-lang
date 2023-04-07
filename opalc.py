@@ -651,6 +651,7 @@ class Compiler:
                     self.__error('"auto" cannot be used as a return type', next)
                     retType = "dynamic"
 
+                canCpdef = False
                 if self.__cy:
                     if (not hasThis) and translates == "def" and retType in CYTHON_FN_TYPES:
                         canCpdef = True
@@ -662,7 +663,11 @@ class Compiler:
                         if canCpdef: 
                             translates = "cpdef"
                             usedCyTypes = None
-                elif retType in CYTHON_TO_PY_TYPES:
+
+                            for i in range(len(internalVars)):
+                                internalVars[i] = (internalVars[i][0], "dynamic")
+
+                if (not canCpdef) and retType in CYTHON_TO_PY_TYPES:
                     retType = CYTHON_TO_PY_TYPES[retType]
 
                 if usedCyTypes:
@@ -1898,6 +1903,7 @@ class Compiler:
         self.eval     = True
         self.static   = False
         self.__cy     = False
+        self.notes    = True
         self.typeMode = "hybrid"
 
         self.statementHandlers = {
@@ -1963,7 +1969,7 @@ class Compiler:
         token.warning(msg, self.__nameStack.getCurrentLocation())
 
     def __note(self, msg, token : Token):
-        token.note(msg, self.__nameStack.getCurrentLocation())
+        if self.notes: token.note(msg, self.__nameStack.getCurrentLocation())
 
     def __resetFlags(self):
         self.flags = {
@@ -2501,6 +2507,10 @@ class Compiler:
         if "--static" in args:
             self.static = True
             args.remove("--static")
+
+        if "--disable-notes" in args:
+            self.notes = False
+            args.remove("--disable-notes")
 
         if "--nostatic" in args:
             args.remove("--nostatic")
