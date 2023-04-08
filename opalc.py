@@ -451,6 +451,11 @@ class Tokens:
                     tokens.append(lastTok)
 
         return self.replaceTokens(tokens)
+    
+def safeLocate(type_):
+    if type_ in ("int", "float", "str", "tuple", "set", "list", "dict", "bool"):
+        return locate(type_)
+    raise Exception()
         
 class Compiler:
     def __new(self, tokens : Tokens, tabs, loop, objNames):
@@ -824,10 +829,8 @@ class Compiler:
                     dyn = unchecked or type_ in ("auto", "dynamic") or self.typeMode == "none"
 
                     if self.eval:
-                        try:
-                            located = locate(type_)
-                        except:
-                            self.__error(f'unable to locate type "{type_}"', typeTok)
+                        try:    located = safeLocate(type_)
+                        except: pass
                         else:
                             try:
                                 if dyn: evaluated = eval(value)
@@ -952,21 +955,36 @@ class Compiler:
         
         _, val = self.getUntilNotInExpr(";", tokens, True, advance = False)
 
-        if cyFunction or self.nextUnchecked or fnProperties[2] == "dynamic" or self.typeMode == "none":
-            if self.nextUnchecked: self.nextUnchecked = False
-            
-            self.out += (" " * tabs) + Tokens([Token("return")] + val).join() + "\n"
-        else:
-            if self.eval:
-                try:    evaluated = locate(fnProperties[2])(eval(val.join()))
+        if self.nextUnchecked:
+            self.nextUnchecked = False
+            unchecked = True
+        else: unchecked = False
+           
+        dyn = cyFunction or unchecked or fnProperties[2] == "dynamic" or self.typeMode == "none"
+
+        if self.eval:
+            try:    located = safeLocate(fnProperties[2])
+            except: pass
+            else:
+                joined = val.join()
+                try:
+                    if dyn: evaluated = eval(joined)
+                    else:   evaluated = located(eval(joined))
                 except: pass
                 else:
                     try:    exec("_=" + str(evaluated))
                     except: pass
                     else:   
-                        self.out += (" " * tabs) + f"return {str(evaluated)}\n"
-                        return loop, objNames
+                        if dyn: ok = eval(joined) == evaluated
+                        else:   ok = located(eval(joined)) == evaluated
 
+                        if ok:
+                            self.out += (" " * tabs) + "return " + str(evaluated) + "\n"
+                            return loop, objNames
+
+        if dyn:
+            self.out += (" " * tabs) + Tokens([Token("return")] + val).join() + "\n"
+        else:
             self.out += (" " * tabs) + Tokens(
                 [
                     Token("return"), Token("_OPAL_CHECK_TYPE_"), Token("("), Token("(")
@@ -1288,13 +1306,7 @@ class Compiler:
                 return self.__simpleBlock("def _OPAL_MAIN_FUNCTION_()", "main()", ("main", "fn"))(tokens, tabs, loop, objNames)
         
         if self.__cy:
-            self.checkDirectNext("{", '"main"', tokens)
-            block = self.getSameLevelParenthesis("{", "}", tokens)
-
-            if len(block) == 0:
-                return loop, objNames
-            
-            return self.__compiler(Tokens(block), tabs, loop, objNames)
+            return self.__simpleBlock('if"_OPAL_RUN_AS_MAIN_"in _ENVIRON_', "main")(tokens, tabs, loop, objNames)
         else:
             return self.__simpleBlock("if __name__=='__main__'", "main")(tokens, tabs, loop, objNames)
     
@@ -2475,7 +2487,7 @@ class Compiler:
 
         if self.flags["mainfn"]:
             if self.__cy:
-                self.out += '_OPAL_MAIN_FUNCTION_()\n'
+                self.out += 'if"_OPAL_RUN_AS_MAIN_"in _ENVIRON_:_OPAL_MAIN_FUNCTION_()\n'
             else:
                 self.out += 'if __name__=="__main__":_OPAL_MAIN_FUNCTION_()\n'
 
@@ -2498,7 +2510,7 @@ class Compiler:
 
     def compileToPYX(self, fileIn, fileOut, top = ""):
         self.__cy = True
-        self.__compileWrite(fileIn, fileOut, top, "cimport cython")
+        self.__compileWrite(fileIn, fileOut, top, "cimport cython\nfrom os import environ as _ENVIRON_")
 
     def handleArgs(self, args: list):
         if "--noeval" in args:
@@ -2636,7 +2648,7 @@ if __name__ == "__main__":
                         filename = sys.argv[3].replace("\\", "\\\\")
 
                     with open(filename, "w") as py:
-                        py.write(f"import {name}")
+                        py.write(f"from os import environ\nenviron['_OPAL_RUN_AS_MAIN_']=''\nimport {name}\ndel environ['_OPAL_RUN_AS_MAIN_']")
 
                     print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
         else:
