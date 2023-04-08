@@ -966,7 +966,7 @@ class Compiler:
             try:    located = safeLocate(fnProperties[2])
             except: pass
             else:
-                joined = val.join()
+                joined = Tokens(val).join()
                 try:
                     if dyn: evaluated = eval(joined)
                     else:   evaluated = located(eval(joined))
