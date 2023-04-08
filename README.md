@@ -331,6 +331,42 @@ main() {
 	# function can be defined
 }
 ```
+### `namespace`
+Creates a namespace. Effectively just a class that can't inherit from other classes and can't be instantiated.
+```
+namespace MyNamespace {
+	# your code here
+}
+```
+### `enum`
+Creates a set of variables contaning distinct constants:
+```
+enum MyEnum {
+	CONST0, CONST1, CONST2
+}
+
+# MyEnum.CONST0 == 0
+# MyEnum.CONST1 == 1
+# ...
+```
+The values of each constant can be chosen when defining the `enum`:
+```
+enum MyEnum {
+	CONST0 = "hi", 
+	CONST1 = 2,
+	CONST2 = 3.14
+}
+```
+`enum`s can also be defined with no name. In that case, the constants get created as actual variables hidden behind no namespace:
+```
+enum {
+	CONST0, CONST1, CONST2
+}
+
+# you can now access the variables directly
+# for example:
+new int myVariable = CONST0 + CONST1;
+```
 ### `unchecked`
 The `unchecked` flag is used to ignore typing on an assignment or skip checks on other statements. Statements to which the `unchecked` flag can be applied are:
 - `repeat`: skips the conversion to an absolute int;
@@ -371,42 +407,6 @@ static:
 namespace Test {
 	# every variable here will be static
 }
-```
-### `namespace`
-Creates a namespace. Effectively just a class that can't inherit from other classes and can't be instantiated.
-```
-namespace MyNamespace {
-	# your code here
-}
-```
-### `enum`
-Creates a set of variables contaning distinct constants:
-```
-enum MyEnum {
-	CONST0, CONST1, CONST2
-}
-
-# MyEnum.CONST0 == 0
-# MyEnum.CONST1 == 1
-# ...
-```
-The values of each constant can be chosen when defining the `enum`:
-```
-enum MyEnum {
-	CONST0 = "hi", 
-	CONST1 = 2,
-	CONST2 = 3.14
-}
-```
-`enum`s can also be defined with no name. In that case, the constants get created as actual variables hidden behind no namespace:
-```
-enum {
-	CONST0, CONST1, CONST2
-}
-
-# you can now access the variables directly
-# for example:
-new int myVariable = CONST0 + CONST1;
 ```
 ### Python equivalents
 Some statements are direct equivalents of Python statements or functions. Here's a list of opal statements that haven't been mentioned yet and their Python equivalents:
