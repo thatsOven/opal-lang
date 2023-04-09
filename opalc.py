@@ -1306,9 +1306,9 @@ class Compiler:
                 return self.__simpleBlock("def _OPAL_MAIN_FUNCTION_()", "main()", ("main", "fn"))(tokens, tabs, loop, objNames)
         
         if self.__cy:
-            return self.__simpleBlock('if"_OPAL_RUN_AS_MAIN_"in _ENVIRON_', "main")(tokens, tabs, loop, objNames)
+            return self.__simpleBlock('if"_OPAL_RUN_AS_MAIN_"in _ENVIRON_', "main", (None, "conditional"))(tokens, tabs, loop, objNames)
         else:
-            return self.__simpleBlock("if __name__=='__main__'", "main")(tokens, tabs, loop, objNames)
+            return self.__simpleBlock("if __name__=='__main__'", "main", (None, "conditional"))(tokens, tabs, loop, objNames)
     
     def __namespace(self, tokens : Tokens, tabs, loop, objNames):
         kw = tokens.last()
@@ -1950,7 +1950,7 @@ class Compiler:
             "--":                  self.__incDec("-"),
             "main":                self.__main,
             "try":                 self.__simpleBlock("try", "try"),
-            "catch":               self.__block("except", "catch"),
+            "catch":               self.__block("except"),
             "success":             self.__simpleBlock("else", "success"),
             "else":                self.__simpleBlock("else", "else", (None, "conditional")),
             "if":                  self.__block("if", push = (None, "conditional")),
@@ -2547,7 +2547,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.4.6 - thatsOven")
+        print("opal compiler v2023.4.9 - thatsOven")
     else:
         compiler = Compiler()
         compiler.handleArgs(sys.argv)
@@ -2580,8 +2580,9 @@ if __name__ == "__main__":
                 compiler.preConsts["HOME_DIR"] = f'"{drt}"'
                 top = 'new dynamic HOME_DIR="' + drt + '";'
 
+            name = os.path.basename(sys.argv[2]).split(".")[0]
             if len(sys.argv) == 3:
-                compiler.compileToPYX(sys.argv[2].replace("\\", "\\\\"), "output.pyx", top)
+                compiler.compileToPYX(sys.argv[2].replace("\\", "\\\\"), f"{name}.pyx", top)
             else:
                 compiler.compileToPYX(sys.argv[2].replace("\\", "\\\\"), sys.argv[3].replace("\\", "\\\\"), top)
 
@@ -2599,8 +2600,9 @@ if __name__ == "__main__":
                 compiler.preConsts["HOME_DIR"] = f'"{drt}"'
                 top = 'new dynamic HOME_DIR="' + drt + '";'
 
+            name = os.path.basename(sys.argv[2]).split(".")[0]
             if len(sys.argv) == 3:
-                compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), "output.py", top)
+                compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), f"{name}.py", top)
             else:
                 compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), sys.argv[3].replace("\\", "\\\\"), top)
 
@@ -2643,7 +2645,7 @@ if __name__ == "__main__":
 
                 if ok:
                     if len(sys.argv) == 3:
-                        filename = "output.py"
+                        filename = f"{name}.py"
                     else:
                         filename = sys.argv[3].replace("\\", "\\\\")
 
