@@ -235,7 +235,7 @@ class Tokens:
         lastIsIdentifier = False
         lastIdentifier   = None
         for token in self.tokens:
-            if token.tok.isidentifier():
+            if token.tok.isidentifier() or token.tok[0].isidentifier():
                 if lastIsIdentifier:
                     buf += " " + token.tok
                     lastIdentifier = token.tok
