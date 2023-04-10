@@ -1913,11 +1913,12 @@ class Compiler:
         self.preConsts   = {}
         self.__nameStack = NameStack()
 
-        self.eval     = True
-        self.static   = False
-        self.__cy     = False
-        self.notes    = True
-        self.typeMode = "hybrid"
+        self.eval      = True
+        self.static    = False
+        self.__cy      = False
+        self.noCompile = False
+        self.notes     = True
+        self.typeMode  = "hybrid"
 
         self.statementHandlers = {
             "new":                 self.__new,
@@ -2509,6 +2510,10 @@ class Compiler:
         self.__compileWrite(fileIn, fileOut, top)
 
     def compileToPYX(self, fileIn, fileOut, top = ""):
+        if self.noCompile:
+            print('This program cannot be compiled. Use the "pycompile" command or run it directly.')
+            quit()
+
         self.__cy = True
         self.__compileWrite(fileIn, fileOut, top, "cimport cython\nfrom os import environ as _ENVIRON_")
 
@@ -2532,6 +2537,10 @@ class Compiler:
                 print('This program cannot be compiled with the "--static" flag.')
                 quit()
 
+        if "--nocompile" in args:
+            args.remove("--nocompile")
+            self.noCompile = True
+
         if "--type-mode" in args:
             idx = args.index("--type-mode")
             args.pop(idx)
@@ -2547,7 +2556,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.4.9 - thatsOven")
+        print("opal compiler v2023.4.11 - thatsOven")
     else:
         compiler = Compiler()
         compiler.handleArgs(sys.argv)

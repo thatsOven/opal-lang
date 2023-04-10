@@ -32,6 +32,8 @@ NOTE: due to how the compiler works, it might not detect some syntax errors, esp
 	- **Usage**: --static
 - `--nostatic`
 	- Specifies that a program cannot be compiled with the `--static` flag. It's not meant to be used via terminal.
+- `--nocompile`
+	- Specifies that a program cannot be compiled. Useful for programs that use Python features that are not included in Cython. It's not meant to be used via terminal.
 - `--debug`
 	- Saves the Cython annotations file when compiling for debugging purposes.
 	- **Usage**: --debug
@@ -490,7 +492,7 @@ if a != b {
 ### `$args`
 Passes the compiler some default arguments. Supported arguments are:
 ```
---noeval, --static, --nostatic, --type-mode
+--noeval, --static, --nostatic, --nocompile, --type-mode
 ```
 Example:
 ```
