@@ -1964,12 +1964,13 @@ class Compiler:
         self.preConsts   = {}
         self.__nameStack = NameStack()
 
-        self.eval      = True
-        self.static    = False
-        self.__cy      = False
-        self.noCompile = False
-        self.notes     = True
-        self.typeMode  = "hybrid"
+        self.eval        = True
+        self.static      = False
+        self.__cy        = False
+        self.noCompile   = False
+        self.compileOnly = False
+        self.notes       = True
+        self.typeMode    = "hybrid"
 
         self.statementHandlers = {
             "new":                 self.__new,
@@ -2556,6 +2557,10 @@ class Compiler:
         else:             return self.out
 
     def compileFile(self, fileIn, top = "", pyTop = None):
+        if self.compileOnly and not self.__cy:
+            print('This program cannot be ran directly or compiled in Python mode. Use the "pyxcompile" or "compile" commands.')
+            quit()
+
         self.__nameStack.push((fileIn, "file"))
         return self.compile(top + "\n" + self.readFile(fileIn), pyTop)
 
@@ -2600,6 +2605,10 @@ class Compiler:
         if "--nocompile" in args:
             args.remove("--nocompile")
             self.noCompile = True
+
+        if "--compile-only" in args:
+            args.remove("--compile-only")
+            self.compileOnly = True
 
         if "--type-mode" in args:
             idx = args.index("--type-mode")
