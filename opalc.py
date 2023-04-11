@@ -774,8 +774,6 @@ class Compiler:
             self.__nameStack.lookforBeforeFn("class") and 
             not self.nextUnchecked
         ):
-            if self.nextStatic: self.nextStatic = False
-
             if type_ in CYTHON_TYPES:
                 if loop is not None:
                     self.__note("consider moving these declarations outside of a loop so they can be automatically optimized", typeTok)
@@ -784,6 +782,8 @@ class Compiler:
                 else:
                     cyType = True
         
+        if self.nextStatic: self.nextStatic = False
+
         if (not cyType) and type_ in CYTHON_TO_PY_TYPES:
             type_ = CYTHON_TO_PY_TYPES[type_]
 
