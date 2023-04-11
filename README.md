@@ -410,6 +410,14 @@ namespace Test {
 	# every variable here will be static
 }
 ```
+### `inline`
+The `inline` flag tries to inline an optimizable function during compilation. The compiler will throw an error if the function to be inlined is not optimizable.
+```
+inline:
+new function add(a: int, b: int) int {
+	return a + b;
+}
+```
 ### Python equivalents
 Some statements are direct equivalents of Python statements or functions. Here's a list of opal statements that haven't been mentioned yet and their Python equivalents:
 ```
@@ -497,6 +505,24 @@ Passes the compiler some default arguments. Supported arguments are:
 Example:
 ```
 $args ["--static", "--type-mode", "check"]
+```
+### `$cy`
+Creates Cython decorators if the compiler is transcompiling to Cython. Avoids errors when running a program in "Python mode". It uses the following syntax:
+```
+$cy flag_name value
+```
+and translates to:
+```
+@cython.flag_name(value)
+```
+... For example:
+```
+$cy nonecheck False
+$cy cdivision True
+inline:
+new function divide(a: float, b: float) float {
+	return a / b;
+}
 ```
 # Operators
 Since opal directly passes expressions to Python, that is, it doesn't parse them, Python operators are all usable, with

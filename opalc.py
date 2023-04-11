@@ -704,13 +704,23 @@ class Compiler:
 
         if translates == "cpdef":
             argsString = ",".join([f"{t} {n}" for n, t in cyInternalVars])
-            self.out += (" " * tabs) + "cpdef " + retType + " " + name.tok + "(" + argsString + "):"
-        elif translates == "class" and argsString == "":
-            self.out += (" " * tabs) + translates + " " + name.tok + "(OpalObject):"
-        elif translates == "class" or retType == "dynamic":
-            self.out += (" " * tabs) + translates + " " + name.tok + "(" + argsString + "):"
+
+            if self.nextInline:
+                self.nextInline = False
+                self.out += (" " * tabs) + "cpdef inline " + retType + " " + name.tok + "(" + argsString + "):"
+            else:
+                self.out += (" " * tabs) + "cpdef " + retType + " " + name.tok + "(" + argsString + "):"
         else:
-            self.out += (" " * tabs) + translates + " " + name.tok + "(" + argsString + f")->{retType}:"
+            if self.nextInline:
+                self.nextInline = False
+                if self.__cy: self.__error('"inline" flag can only be used on optimizable functions')
+            
+            if translates == "class" and argsString == "":
+                self.out += (" " * tabs) + translates + " " + name.tok + "(OpalObject):"
+            elif translates == "class" or retType == "dynamic":
+                self.out += (" " * tabs) + translates + " " + name.tok + "(" + argsString + "):"
+            else:
+                self.out += (" " * tabs) + translates + " " + name.tok + "(" + argsString + f")->{retType}:"
 
         block = self.getSameLevelParenthesis("{", "}", tokens)
         if len(block) == 0:
@@ -794,6 +804,10 @@ class Compiler:
             if type_ in ("auto", "dynamic"):
                 self.__error('"unchecked" flag is not effective on "auto" and "dynamic" typing', typeTok)
         else: unchecked = False
+
+        if self.nextInline:
+            self.nextInline = False
+            self.__error('"inline" flag is not effective on variables declarations')
 
         _, variablesDef = self.getUntilNotInExpr(";", tokens, True, advance = False)
         variablesDef = Tokens(variablesDef)
@@ -889,6 +903,10 @@ class Compiler:
         if self.nextAbstract:
             self.nextAbstract = False
             self.__error('"abstract" flag is not effective on inline boolean inversions', last)
+
+        if self.nextInline:
+            self.nextInline = False
+            self.__error('"inline" flag is not effective on inline boolean inversions', last)
     
         self.out += (" " * tabs) + Tokens(var + [Token("="), Token("not")] + var).join() + "\n"
 
@@ -914,6 +932,10 @@ class Compiler:
         if self.nextAbstract:
             self.nextAbstract = False
             self.__error(f'"abstract" flag is not effective on "{statement}" statement', tok)
+
+        if self.nextInline:
+            self.nextInline = False
+            self.__error(f'"inline" flag is not effective on "{statement}" statement', tok)
     
     def __quit(self, tokens : Tokens, tabs, loop, objNames):
         self.__flagsError("quit", tokens.last())
@@ -946,6 +968,10 @@ class Compiler:
         if self.nextAbstract:
             self.nextAbstract = False
             self.__error('"abstract" flag is not effective on "return" statement', kw)
+
+        if self.nextInline:
+            self.nextInline = False
+            self.__error('"inline" flag is not effective on "return" statement', kw)
 
         next = tokens.peek()
         if next.tok == ";":
@@ -1087,6 +1113,19 @@ class Compiler:
             self.static = backStatic
         else: 
             self.__error('expecting ":" or "{" after "static"', next)
+
+        return loop, objNames
+    
+    def __inline(self, tokens : Tokens, tabs, loop, objNames):
+        if self.nextInline:
+            self.__error('"inline" flag was used twice. remove this flag', tokens.last())
+
+        next = tokens.peek()
+        if next.tok == ":":
+            tokens.next()
+            self.nextInline = True
+        else: 
+            self.__error('expecting ":" after "inline"', next)
 
         return loop, objNames
     
@@ -1320,6 +1359,10 @@ class Compiler:
             self.nextUnchecked = False
             self.__error('"unchecked" flag is not effective on "namespace" statement', kw)
 
+        if self.nextInline:
+            self.nextInline = False
+            self.__error('"inline" flag is not effective on "namespace" statement', kw)
+
         if self.nextAbstract:
             self.nextAbstract = False
             self.__error('cannot create abstract namespace', kw)
@@ -1381,6 +1424,10 @@ class Compiler:
         if self.nextAbstract:
             self.nextAbstract = False
             self.__error('"abstract" flag is not effective on "repeat" statement', kw)
+
+        if self.nextInline:
+            self.nextInline = False
+            self.__error('"inline" flag is not effective on "repeat" statement', kw)
 
         _, valList = self.getUntilNotInExpr("{", tokens, True, advance = False)
         block = self.getSameLevelParenthesis("{", "}", tokens)
@@ -1656,6 +1703,10 @@ class Compiler:
         if self.nextAbstract:
             self.nextAbstract = False
             self.__error(f'"abstract" flag is not effective on "property" statement', kw)
+
+        if self.nextInline:
+            self.nextInline = False
+            self.__error(f'"inline" flag is not effective on "property" statement', kw)
 
         _, value = self.getUntilNotInExpr("{", tokens, True, advance = False)
         block = self.getSameLevelParenthesis("{", "}", tokens)
@@ -1965,7 +2016,8 @@ class Compiler:
             "enum":                self.__enum,
             "abstract":            self.__abstract,
             "ignore":              self.__ignore,
-            "static":              self.__static
+            "static":              self.__static,
+            "inline":              self.__inline
         }
 
     def __lineWarn(self, msg, line):
@@ -2439,6 +2491,13 @@ class Compiler:
                     inPy = False
                 case "args":
                     self.handleArgs(eval(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()))
+                case "cy":
+                    if not self.__cy: continue
+
+                    arg = tokenizedLine.next().tok
+                    val = tokenizedLine.next().tok
+
+                    result += "@cython." + arg + f"({val});\n"
                 case _:
                     self.__lineWarn("unknown or incomplete precompiler instruction. ignoring line", i)
 
@@ -2457,6 +2516,7 @@ class Compiler:
         self.nextAbstract  = False
         self.nextUnchecked = False
         self.nextStatic    = False
+        self.nextInline    = False
         self.lastPackage   = ""
 
         self.__resetFlags()
