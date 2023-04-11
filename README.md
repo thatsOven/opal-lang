@@ -485,7 +485,7 @@ $call sayHi
 $call add(2, 4)
 ```
 ### `$nocompile`
-Tells the precompiler to directly transcribe code to the result until a `$restore` statement. In practice, it allows to use Python code inside opal.
+Tells the precompiler to directly transcribe code to the result until a `$restore` statement. In practice, it allows to use Python or Cython code inside opal.
 ```
 if a != b {
 	if a < b {
