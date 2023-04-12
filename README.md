@@ -526,6 +526,20 @@ new function divide(a: float, b: float) float {
 	return a / b;
 }
 ```
+### `$tabcontext`
+Adds a value to the inferred indentation. Useful when mixing non-opal syntax with opal. Example:
+```
+$nocompile
+cdef inline int subGreater(int a, int b):
+$restore
+$tabcontext 1
+	if a > b {
+		return a - b;
+	} else {
+		return b - a; 
+	}
+$tabcontext -1
+```
 # Operators
 Since opal directly passes expressions to Python, that is, it doesn't parse them, Python operators are all usable, with
 a few additions:

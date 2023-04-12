@@ -1887,6 +1887,14 @@ class Compiler:
                             self.__error('invalid arguments for "PUSH_NAME" signal', kw)
                     case "POP_NAME":
                         self.__nameStack.pop()
+                    case "TABS_ADD":
+                        try:
+                            args = int(args)
+                        except:
+                            self.__error(f'expecting an integer for "{signal}" signal', kw)
+                            args = 0
+
+                        tabs += args
             else:
                 first  = next
                 if next.tok == "(":
@@ -2089,6 +2097,9 @@ class Compiler:
                     val = tokenizedLine.next().tok
 
                     result += "@cython." + arg + f"({val});\n"
+                case "tabcontext":
+                    qty = tokenizedLine.next().tok
+                    result += f"__OPALSIG[TABS_ADD]({qty})\n"
                 case _:
                     self.__lineWarn("unknown or incomplete precompiler instruction. ignoring line", i)
 
