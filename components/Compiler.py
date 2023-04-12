@@ -29,7 +29,7 @@ import os
 
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
-    "short", "int", "long", "long long", "float", 
+    "short", "int", "long", "long long", "float", "bint"
     "double", "long double", "list", "object", "str", 
     "tuple", "dict", "range", "bytes", "bytearray", "complex"
 )
@@ -1874,7 +1874,7 @@ class Compiler:
                             self.__error(f'invalid syntax: expecting "." after "__OPALSIG[{signal}]({args})"', next)
                         else: tokens.next()
 
-                        _, code = self.getUntilNotInExpr(";", tokens, True, advance = False)
+                        _, code = self.getUntil(";", tokens, True)
 
                         self.out += (" " * (args + tabs)) + Tokens(code).join() + "\n"
                     case "PUSH_NAME":
@@ -1974,7 +1974,7 @@ class Compiler:
 
                     strippedLine = line.lstrip()
                     tabs = len(line) - len(strippedLine)
-                    line = f"__OPALSIG[EMBED_INFER]({tabs})." + strippedLine.rstrip() + ";"
+                    line = f"__OPALSIG[EMBED_INFER]({tabs})." + strippedLine.rstrip() + ";\n"
 
                 if savingMacro is None:
                     result += line + "\n"
@@ -2095,7 +2095,7 @@ class Compiler:
 
                     result += "@cython." + arg + f"({val});\n"
                 case "tabcontext":
-                    qty = tokenizedLine.next().tok
+                    qty = Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()
                     result += f"__OPALSIG[TABS_ADD]({qty})\n"
                 case _:
                     self.__lineWarn("unknown or incomplete precompiler instruction. ignoring line", i)
