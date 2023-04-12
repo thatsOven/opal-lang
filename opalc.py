@@ -2541,6 +2541,15 @@ class Compiler:
 
         self.tokens = Tokens(self.__preCompiler(section))
 
+        if self.__cy:
+            if self.noCompile:
+                print('This program cannot be compiled. Use the "pycompile" command or run it directly.')
+                quit()
+        else:
+            if self.compileOnly:
+                print('This program cannot be ran directly or compiled in Python mode. Use the "pyxcompile" or "compile" commands.')
+                quit()
+
         if "_OPAL_PRINT_RETURN_" in [x.tok for x in self.tokens.tokens]:
             self.flags["OPAL_PRINT_RETURN"] = True
             self.out += "from libs.std import _OPAL_PRINT_RETURN_\n"
@@ -2557,10 +2566,6 @@ class Compiler:
         else:             return self.out
 
     def compileFile(self, fileIn, top = "", pyTop = None):
-        if self.compileOnly and not self.__cy:
-            print('This program cannot be ran directly or compiled in Python mode. Use the "pyxcompile" or "compile" commands.')
-            quit()
-
         self.__nameStack.push((fileIn, "file"))
         return self.compile(top + "\n" + self.readFile(fileIn), pyTop)
 
@@ -2575,10 +2580,6 @@ class Compiler:
         self.__compileWrite(fileIn, fileOut, top)
 
     def compileToPYX(self, fileIn, fileOut, top = ""):
-        if self.noCompile:
-            print('This program cannot be compiled. Use the "pycompile" command or run it directly.')
-            quit()
-
         self.__cy = True
         self.__compileWrite(fileIn, fileOut, top, "cimport cython\nfrom os import environ as _ENVIRON_")
 
@@ -2625,7 +2626,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.4.11 - thatsOven")
+        print("opal compiler v2023.4.12 - thatsOven")
     else:
         compiler = Compiler()
         compiler.handleArgs(sys.argv)
