@@ -485,20 +485,21 @@ $call sayHi
 $call add(2, 4)
 ```
 ### `$nocompile`
-Tells the precompiler to directly transcribe code to the result until a `$restore` statement. In practice, it allows to use Python or Cython code inside opal.
+Tells the precompiler to directly transcribe code to the result until a `$restore` statement. In practice, it allows to use Python or Cython code inside opal. Code in `$nocompile`-`$restore` blocks should be put on a "null indentation", for example:
 ```
 if a != b {
 	if a < b {
 		$nocompile
 		
-		for i in range(a, b):
-			if i > 2:
-				print(i)
+for i in range(a, b):
+	if i > 2:
+		print(i)
 		
 		$restore
 	}
 }
 ```
+This is needed because opal will add to the base indentation an inferred indentation, that is based on the code logic. This allows to directly import Python or Cython source files with no syntax errors.
 ### `$args`
 Passes the compiler some default arguments. Supported arguments are:
 ```
@@ -533,7 +534,7 @@ $nocompile
 cdef inline int subGreater(int a, int b):
 $restore
 $tabcontext 1
-        new int result;
+    new int result;
 
 	if a > b {
 		result = a - b;
@@ -541,9 +542,9 @@ $tabcontext 1
 		result = b - a; 
 	}
         
-        $nocompile
-        return result
-        $restore
+    $nocompile
+return result
+    $restore
 $tabcontext -1
 ```
 # Operators

@@ -1862,7 +1862,7 @@ class Compiler:
                 args = Tokens(self.getSameLevelParenthesis("(", ")", tokens)).join()
 
                 match signal:
-                    case "EMBED" | "EMBED_INFER":
+                    case "EMBED_INFER":
                         try:
                             args = int(args)
                         except:
@@ -1876,10 +1876,7 @@ class Compiler:
 
                         _, code = self.getUntilNotInExpr(";", tokens, True, advance = False)
 
-                        if signal == "EMBED":
-                            self.out += (" " * args) + Tokens(code).join() + "\n"
-                        else:
-                            self.out += (" " * (args + tabs)) + Tokens(code).join() + "\n"
+                        self.out += (" " * (args + tabs)) + Tokens(code).join() + "\n"
                     case "PUSH_NAME":
                         try:
                             self.__nameStack.push(eval(f"({args})"))
@@ -1977,7 +1974,7 @@ class Compiler:
 
                     strippedLine = line.lstrip()
                     tabs = len(line) - len(strippedLine)
-                    line = f"__OPALSIG[EMBED]({tabs})." + strippedLine.rstrip() + ";"
+                    line = f"__OPALSIG[EMBED_INFER]({tabs})." + strippedLine.rstrip() + ";"
 
                 if savingMacro is None:
                     result += line + "\n"
