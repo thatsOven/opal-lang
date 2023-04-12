@@ -533,11 +533,17 @@ $nocompile
 cdef inline int subGreater(int a, int b):
 $restore
 $tabcontext 1
+        new int result;
+
 	if a > b {
-		return a - b;
+		result = a - b;
 	} else {
-		return b - a; 
+		result = b - a; 
 	}
+        
+        $nocompile
+        return result
+        $restore
 $tabcontext -1
 ```
 # Operators
