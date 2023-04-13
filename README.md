@@ -500,6 +500,19 @@ for i in range(a, b):
 }
 ```
 This is needed because opal will add to the base indentation an inferred indentation, that is based on the code logic. This allows to directly import Python or Cython source files with no syntax errors.
+### `$embed`
+Directly transcribes a line of code to the compiled result. Useful to avoid the `$nocompile`-`$restore` syntax for one-liners.
+```
+if a != b {
+	if a < b {
+		for i in range(a, b) {
+			if i > 2 {
+				$embed print(i)
+			}
+		}
+	}
+}
+```
 ### `$args`
 Passes the compiler some default arguments. Supported arguments are:
 ```
@@ -526,26 +539,6 @@ inline:
 new function divide(a: float, b: float) float {
 	return a / b;
 }
-```
-### `$tabcontext`
-Adds a value to the inferred indentation. Useful when mixing non-opal syntax with opal. Example:
-```
-$nocompile
-cdef inline int subGreater(int a, int b):
-$restore
-$tabcontext 1
-    new int result;
-
-	if a > b {
-		result = a - b;
-	} else {
-		result = b - a; 
-	}
-        
-    $nocompile
-return result
-    $restore
-$tabcontext -1
 ```
 # Operators
 Since opal directly passes expressions to Python, that is, it doesn't parse them, Python operators are all usable, with

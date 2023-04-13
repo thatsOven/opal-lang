@@ -2096,7 +2096,11 @@ class Compiler:
                     result += "@cython." + arg + f"({val});\n"
                 case "tabcontext":
                     qty = Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()
+                    self.__manualSig = False
                     result += f"__OPALSIG[TABS_ADD]({qty})\n"
+                case "embed":
+                    self.__manualSig = False
+                    result += f"__OPALSIG[EMBED_INFER](0)." + Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join() + ";\n"
                 case _:
                     self.__lineWarn("unknown or incomplete precompiler instruction. ignoring line", i)
 
