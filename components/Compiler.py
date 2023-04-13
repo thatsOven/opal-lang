@@ -2097,10 +2097,22 @@ class Compiler:
                 case "tabcontext":
                     qty = Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()
                     self.__manualSig = False
-                    result += f"__OPALSIG[TABS_ADD]({qty})\n"
+
+                    buf = f"__OPALSIG[TABS_ADD]({qty})\n"
+
+                    if savingMacro is None:
+                        result += buf
+                    else:
+                        savingMacro.add(buf)
                 case "embed":
                     self.__manualSig = False
-                    result += f"__OPALSIG[EMBED_INFER](0)." + Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join() + ";\n"
+
+                    buf = f"__OPALSIG[EMBED_INFER](0)." + Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join() + ";\n"
+
+                    if savingMacro is None:
+                        result += buf
+                    else:
+                        savingMacro.add(buf)
                 case _:
                     self.__lineWarn("unknown or incomplete precompiler instruction. ignoring line", i)
 
