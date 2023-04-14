@@ -1492,7 +1492,11 @@ class Compiler:
             if len(value) > 1:
                 self.__error('enum name should contain only one token', value[0])
 
-            self.out += (" " * tabs) + Tokens([Token("class"), value[0]]).join() + ":"
+            if not self.flags["enum"]:
+                self.flags["enum"] = True
+                self.out = "from enum import IntEnum\n" + self.out
+
+            self.out += (" " * tabs) + Tokens([Token("class"), value[0], Token("(IntEnum)")]).join() + ":"
 
             if len(block) == 0:
                 self.out += "pass\n"
@@ -1632,7 +1636,8 @@ class Compiler:
             "mainfn":            False,
             "OPAL_PRINT_RETURN": False,
             "namespace":         False,
-            "object":            False
+            "object":            False,
+            "enum":              False
         }
 
     def newObj(self, objNames, nameToken : Token, type_):
@@ -2124,8 +2129,8 @@ class Compiler:
         self.consts         = {}
         self.autoTypes      = {}
 
-        self.out            = ""
-        self.hadError       = False
+        self.out      = ""
+        self.hadError = False
 
         self.__manualSig   = True
         self.nextAbstract  = False
