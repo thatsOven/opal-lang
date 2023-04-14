@@ -785,7 +785,9 @@ class Compiler:
             name = next
             next, nameBuf = self.getUntilNotInExpr(("as", ","), imports, True, False, False)
             if next != "" and next.tok in ("as", ","): imports.pos -= 1
-            if len(nameBuf) != 0: name.tok = Tokens(nameBuf).join()
+            if len(nameBuf) != 0: 
+                name = name.copy()
+                name.tok = Tokens(nameBuf).join()
 
             if not imports.isntFinished():
                 self.newObj(objNames, name, "dynamic")

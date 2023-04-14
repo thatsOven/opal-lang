@@ -33,6 +33,11 @@ class Token:
 
         self.tokens : Tokens = tokens
 
+    def copy(self):
+        tok = Token(self.tok, self.line, self.pos, self.tokens)
+        tok.maxline = self.maxline
+        return tok
+
     def __getlines(self):
         if self.line <= 3:
             return range(1, min(6, self.maxline))
