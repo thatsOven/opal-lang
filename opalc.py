@@ -138,7 +138,7 @@ if __name__ == "__main__":
 
             compiler.compileToPYX(sys.argv[2].replace("\\", "\\\\"), f"{name}.pyx", top)
 
-            ok = build(f"{name}.pyx", debug, compiler.module)
+            ok = build(f"{name}.pyx", debug)
                 
             if os.path.exists("build"): shutil.rmtree("build")
             if os.path.exists(f"{name}.pyx"): os.remove(f"{name}.pyx")
