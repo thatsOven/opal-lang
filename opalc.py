@@ -22,10 +22,37 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import os, sys, cythonbuilder, shutil
+import os, sys, shutil, numpy
 from timeit              import default_timer
 from pathlib             import Path
+from setuptools          import setup
+from Cython.Build        import cythonize
+from Cython.Compiler     import Options
 from components.Compiler import *
+
+def build(file, debug = False):
+    Options.annotate = debug
+
+    oldArgs = sys.argv
+    sys.argv = [sys.argv[0], "build_ext", "--inplace"]
+
+    try:
+        setup(
+            name         = os.path.basename(file).split(".")[0],
+            include_dirs = [numpy.get_include()], 
+            ext_modules  = cythonize(file, compiler_directives = {
+                "language_level": "3"
+            }),
+            zip_safe = False
+        )
+    except:
+        ok = False
+    else:
+        ok = True
+
+    sys.argv = oldArgs
+
+    return ok
 
 def getHomeDirFromFile(file):
     return str(Path(file).parent.absolute()).replace("\\", "\\\\\\\\")
@@ -111,34 +138,25 @@ if __name__ == "__main__":
 
             compiler.compileToPYX(sys.argv[2].replace("\\", "\\\\"), f"{name}.pyx", top)
 
-            if not compiler.hadError:
-                print("opal -> Cython: Done in " + str(round(default_timer() - time, 4)) + " seconds")
-                cythonbuilder.cy_init()
+            ok = build(f"{name}.pyx", debug, compiler.module)
+                
+            if os.path.exists("build"): shutil.rmtree("build")
+            if os.path.exists(f"{name}.pyx"): os.remove(f"{name}.pyx")
+            if os.path.exists(f"{name}.c"):   os.remove(f"{name}.c")
 
-                try:
-                    cythonbuilder.cy_build([f"{name}.pyx"], debug, True)
-                except Exception as e:
-                    print("Compilation failed.")
-                    ok = False
+            if ok:
+                if len(sys.argv) == 3:
+                    filename = f"{name}.py"
                 else:
-                    ok = True
+                    filename = sys.argv[3].replace("\\", "\\\\")
 
-                if os.path.exists("ext"):   shutil.rmtree("ext")
-                if os.path.exists("build"): shutil.rmtree("build")
-                if os.path.exists(f"{name}.pyx"): os.remove(f"{name}.pyx")
-                if os.path.exists(f"{name}.c"):   os.remove(f"{name}.c")
+                if not compiler.module:
+                    with open(filename, "w") as py:
+                        py.write(f"from os import environ\nenviron['_OPAL_RUN_AS_MAIN_']=''\nimport {name}\ndel environ['_OPAL_RUN_AS_MAIN_']")
 
-                if ok:
-                    if len(sys.argv) == 3:
-                        filename = f"{name}.py"
-                    else:
-                        filename = sys.argv[3].replace("\\", "\\\\")
-
-                    if not compiler.module:
-                        with open(filename, "w") as py:
-                            py.write(f"from os import environ\nenviron['_OPAL_RUN_AS_MAIN_']=''\nimport {name}\ndel environ['_OPAL_RUN_AS_MAIN_']")
-
-                    print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
+                print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
+            else:
+                print("Compilation failed")
         else:
             sys.argv[1] = sys.argv[1].replace("\\", "\\\\")
             if not os.path.exists(sys.argv[1]):

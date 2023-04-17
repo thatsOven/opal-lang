@@ -48,7 +48,6 @@ pygame
 numpy
 typeguard
 Cython
-cythonbuilder
 ```
 opal only supports Python 3.10 and upper.
 # Runner
