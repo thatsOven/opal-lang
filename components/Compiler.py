@@ -82,7 +82,10 @@ class Compiler:
                 if self.nextAbstract:
                     self.nextAbstract = False
                     self.__error("cannot create abstract record", next)
-                    return loop, objNames
+
+                if self.nextCdef:
+                    self.nextCdef = False
+                    self.__error("cannot use $cdef on record", next)
 
                 translates = "class"
                 isRecord = True
@@ -178,6 +181,10 @@ class Compiler:
                 if self.nextStatic:
                     self.nextStatic = False
                     self.__error('cannot use "static" flag on an abstract method', objType)
+
+                if self.nextCdef:
+                    self.nextCdef = False
+                    self.__error('cannot use $cdef on an abstract method', objType)
 
                 self.newObj(objNames, name, "dynamic")
 
@@ -291,21 +298,34 @@ class Compiler:
             self.newObj(objNames, name, "class")
 
         if translates == "cpdef":
+            if self.nextCdef:
+                self.nextCdef = False
+                translates = "cdef"
+
             argsString = ",".join([f"{t} {n}" for n, t in cyInternalVars])
 
             if self.nextInline:
                 self.nextInline = False
-                self.out += (" " * tabs) + "cpdef inline " + retType + " " + name.tok + "(" + argsString + "):"
+                self.out += (" " * tabs) + translates + " inline " + retType + " " + name.tok + "(" + argsString + "):"
             else:
-                self.out += (" " * tabs) + "cpdef " + retType + " " + name.tok + "(" + argsString + "):"
+                self.out += (" " * tabs) + translates + " " + retType + " " + name.tok + "(" + argsString + "):"
         else:
             if self.nextInline:
                 self.nextInline = False
                 if self.__cy: self.__error('"inline" flag can only be used on optimizable functions')
+
+            isClass = translates == "class"
+
+            if self.nextCdef:
+                self.nextCdef = False
+
+                if isClass: 
+                    if self.__cy: translates = "cdef class"
+                else: self.__error('$cdef can only be used on classes and optimizable functions')
             
-            if translates == "class" and argsString == "":
+            if isClass and argsString == "":
                 self.out += (" " * tabs) + translates + " " + name.tok + "(OpalObject):"
-            elif translates == "class" or retType == "dynamic":
+            elif isClass or retType == "dynamic":
                 self.out += (" " * tabs) + translates + " " + name.tok + "(" + argsString + "):"
             else:
                 self.out += (" " * tabs) + translates + " " + name.tok + "(" + argsString + f")->{retType}:"
@@ -495,6 +515,10 @@ class Compiler:
         if self.nextInline:
             self.nextInline = False
             self.__error('"inline" flag is not effective on inline boolean inversions', last)
+
+        if self.nextCdef:
+            self.nextCdef = False
+            self.__error('$cdef is not effective on inline boolean inversions', last)
     
         self.out += (" " * tabs) + Tokens(var + [Token("="), Token("not")] + var).join() + "\n"
 
@@ -524,6 +548,10 @@ class Compiler:
         if self.nextInline:
             self.nextInline = False
             self.__error(f'"inline" flag is not effective on "{statement}" statement', tok)
+
+        if self.nextCdef:
+            self.nextCdef = False
+            self.__error(f'$cdef is not effective on "{statement}" statement', tok)
     
     def __quit(self, tokens : Tokens, tabs, loop, objNames):
         self.__flagsError("quit", tokens.last())
@@ -560,6 +588,10 @@ class Compiler:
         if self.nextInline:
             self.nextInline = False
             self.__error('"inline" flag is not effective on "return" statement', kw)
+        
+        if self.nextCdef:
+            self.nextCdef = False
+            self.__error('$cdef is not effective on "return" statement', kw)
 
         next = tokens.peek()
         if next.tok == ";":
@@ -953,6 +985,10 @@ class Compiler:
             self.nextInline = False
             self.__error('"inline" flag is not effective on "namespace" statement', kw)
 
+        if self.nextCdef:
+            self.nextCdef = False
+            self.__error('$cdef is not effective on "namespace" statement', kw)
+
         if self.nextAbstract:
             self.nextAbstract = False
             self.__error('cannot create abstract namespace', kw)
@@ -970,10 +1006,10 @@ class Compiler:
 
             backStatic = self.static
             self.static = True
-            self.__block(f"class", content = [next, Token("(OpalNamespace)")], push = (next.tok, "class"))(tokens, tabs, loop, objNames)
+            self.__block("class", content = [next, Token("(OpalNamespace)")], push = (next.tok, "class"))(tokens, tabs, loop, objNames)
             self.static = backStatic
         else:
-            self.__block(f"class", content = [next, Token("(OpalNamespace)")], push = (next.tok, "class"))(tokens, tabs, loop, objNames)
+            self.__block("class", content = [next, Token("(OpalNamespace)")], push = (next.tok, "class"))(tokens, tabs, loop, objNames)
 
         return loop, objNames
     
@@ -1018,6 +1054,10 @@ class Compiler:
         if self.nextInline:
             self.nextInline = False
             self.__error('"inline" flag is not effective on "repeat" statement', kw)
+
+        if self.nextCdef:
+            self.nextCdef = False
+            self.__error('$cdef is not effective on "repeat" statement', kw)
 
         _, valList = self.getUntilNotInExpr("{", tokens, True, advance = False)
         block = self.getSameLevelParenthesis("{", "}", tokens)
@@ -1298,6 +1338,10 @@ class Compiler:
             self.nextInline = False
             self.__error(f'"inline" flag is not effective on "property" statement', kw)
 
+        if self.nextCdef:
+            self.nextCdef = False
+            self.__error('$cdef is not effective on "property" statement', kw)
+
         _, value = self.getUntilNotInExpr("{", tokens, True, advance = False)
         block = self.getSameLevelParenthesis("{", "}", tokens)
 
@@ -1564,6 +1608,7 @@ class Compiler:
         self.noCompile   = False
         self.compileOnly = False
         self.notes       = True
+        self.module      = False
         self.typeMode    = "hybrid"
 
         self.statementHandlers = {
@@ -1899,6 +1944,8 @@ class Compiler:
                             args = 0
 
                         tabs += args
+                    case "CDEF":
+                        self.nextCdef = True
             else:
                 first  = next
                 if next.tok == "(":
@@ -2120,6 +2167,13 @@ class Compiler:
                         result += buf
                     else:
                         savingMacro.add(buf)
+                case "cdef":
+                    self.__manualSig = False
+
+                    if savingMacro is None:
+                        result += "__OPALSIG[CDEF]()\n"
+                    else:
+                        savingMacro.add("__OPALSIG[CDEF]()\n")
                 case _:
                     self.__lineWarn("unknown or incomplete precompiler instruction. ignoring line", i)
 
@@ -2139,6 +2193,7 @@ class Compiler:
         self.nextUnchecked = False
         self.nextStatic    = False
         self.nextInline    = False
+        self.nextCdef      = False
         self.lastPackage   = ""
 
         self.__resetFlags()
@@ -2231,6 +2286,10 @@ class Compiler:
         if "--compile-only" in args:
             args.remove("--compile-only")
             self.compileOnly = True
+
+        if "--module" in args:
+            args.remove("--module")
+            self.module = True
 
         if "--type-mode" in args:
             idx = args.index("--type-mode")

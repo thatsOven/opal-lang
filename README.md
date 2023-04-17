@@ -36,6 +36,8 @@ NOTE: due to how the compiler works, it might not detect some syntax errors, esp
 	- Specifies that a program cannot be compiled. Useful for programs that use Python features that are not included in Cython. It's not meant to be used via terminal.
 - `--compile-only`
 	- Specifies that a program can only be compiled. Useful for programs that use Cython instructions or features. It's not meant to be used via terminal.
+- `--module`
+	- Specifies that a program is a module. It's not meant to be used via terminal.
 - `--debug`
 	- Saves the Cython annotations file when compiling for debugging purposes.
 	- **Usage**: --debug
@@ -538,6 +540,14 @@ $cy cdivision True
 inline:
 new function divide(a: float, b: float) float {
 	return a / b;
+}
+```
+### `$cdef`
+Applies the Cython `cdef` keyword to the next element when possible. For example:
+```
+$cdef
+new function add(a: int, b: int) int {
+	return a + b;
 }
 ```
 # Operators

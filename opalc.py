@@ -32,7 +32,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.4.14 - thatsOven")
+        print("opal compiler v2023.4.17 - thatsOven")
     else:
         compiler = Compiler()
         compiler.handleArgs(sys.argv)
@@ -134,8 +134,9 @@ if __name__ == "__main__":
                     else:
                         filename = sys.argv[3].replace("\\", "\\\\")
 
-                    with open(filename, "w") as py:
-                        py.write(f"from os import environ\nenviron['_OPAL_RUN_AS_MAIN_']=''\nimport {name}\ndel environ['_OPAL_RUN_AS_MAIN_']")
+                    if not compiler.module:
+                        with open(filename, "w") as py:
+                            py.write(f"from os import environ\nenviron['_OPAL_RUN_AS_MAIN_']=''\nimport {name}\ndel environ['_OPAL_RUN_AS_MAIN_']")
 
                     print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
         else:
