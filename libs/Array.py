@@ -22,9 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from libs.std      import dynamic
-from libs.sort     import sort
-from libs.fastSort import fastSort
+from libs._internals import dynamic
+from libs.sort       import sort
+from libs.fastSort   import fastSort
 
 class Array:
     def __init__(self, capacity, arrayType = dynamic, contents = None):

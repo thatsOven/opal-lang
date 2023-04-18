@@ -1,11 +1,9 @@
 from distutils.dir_util   import copy_tree
 from shutil               import rmtree
-from pathlib              import Path
 from os                   import chdir, path, getcwd, remove
 from ianthe               import Ianthe
 
-spath = str(Path(__file__).parent.absolute())
-chdir(spath)
+spath = getcwd()
 
 with open("opalrun.py", "w") as script:
     script.write("from subprocess import run\nfrom sys import argv\n")

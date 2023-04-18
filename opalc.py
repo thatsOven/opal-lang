@@ -54,12 +54,28 @@ def build(file, debug = False):
 
     return ok
 
+def compileOne(libs, file, compiler):
+    filename = os.path.join(libs, file)
+    name     = file.split(".")[0]
+
+    compiler.preConsts["HOME_DIR"] = f'"{libs}"'
+    top = 'new dynamic HOME_DIR="' + libs + '";'
+
+    compiler.compileToPYX(filename, f"{name}.pyx", top)
+
+    ok = build(f"{name}.pyx", debug)
+                
+    if os.path.exists(f"{name}.pyx"): os.remove(f"{name}.pyx")
+    if os.path.exists(f"{name}.c"):   os.remove(f"{name}.c")
+
+    return ok
+
 def getHomeDirFromFile(file):
     return str(Path(file).parent.absolute()).replace("\\", "\\\\\\\\")
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.4.17 - thatsOven")
+        print("opal compiler v2023.4.18 - thatsOven")
     else:
         compiler = Compiler()
         compiler.handleArgs(sys.argv)
@@ -145,18 +161,40 @@ if __name__ == "__main__":
             if os.path.exists(f"{name}.c"):   os.remove(f"{name}.c")
 
             if ok:
-                if len(sys.argv) == 3:
-                    filename = f"{name}.py"
-                else:
-                    filename = sys.argv[3].replace("\\", "\\\\")
-
                 if not compiler.module:
+                    if len(sys.argv) == 3:
+                        filename = f"{name}.py"
+                    else:
+                        filename = sys.argv[3].replace("\\", "\\\\")
+
                     with open(filename, "w") as py:
                         py.write(f"from os import environ\nenviron['_OPAL_RUN_AS_MAIN_']=''\nimport {name}\ndel environ['_OPAL_RUN_AS_MAIN_']")
 
                 print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
             else:
                 print("Compilation failed")
+        elif sys.argv[1] == "build":
+            libs = os.path.join(getHomeDirFromFile(__file__), "libs")
+            os.chdir(libs)
+
+            ok = compileOne(libs, "std.opal", compiler)
+            if not ok:
+                print("Compilation failed")
+                quit()
+
+            for file in os.listdir(libs):
+                if file.endswith(".opal") and not file in ("helpers.opal", "std.opal"):
+                    ok = compileOne(libs, file, compiler)
+
+                    if not ok:
+                        print("Compilation failed")
+                        break
+
+            if os.path.exists("build"): shutil.rmtree("build")
+
+            if ok:
+                os.chdir(os.path.join(getHomeDirFromFile(__file__), "runner"))
+                import runner.build
         else:
             sys.argv[1] = sys.argv[1].replace("\\", "\\\\")
             if not os.path.exists(sys.argv[1]):

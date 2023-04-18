@@ -40,7 +40,6 @@ class Utils:
                               insertToLeft,
                               insertToRight,
                               rotate,
-                              rotateOOP,
                               binarySearch,
                               linearSearch,
                               reverse
@@ -49,7 +48,7 @@ class Utils:
         from libs.std import arraySwap as swap
 
         from libs.sort       import sort
-        from libs.merge      import Merge, merge, mergeTwo
+        from libs.merge      import merge, mergeTwo
         from libs.stableSort import stableSort
         from libs.fastSort   import fastSort
 
@@ -60,17 +59,17 @@ class Utils:
         from libs.std import getNearestPowerOfTwo
 
 class Typing:
-    from libs.std import (
+    from libs._internals import (
         mode, hybrid, check,
         force, none
     )
 
-from libs.std      import dynamic
-from libs.Array    import Array
-from libs.Stack    import Stack
-from libs.Vector   import Vector
-from libs.char     import char
-from libs.Queue    import Queue
+from libs._internals import dynamic
+from libs.Array      import Array
+from libs.Stack      import Stack
+from libs.Vector     import Vector
+from libs.char       import char
+from libs.Queue      import Queue
 
 from libs.graphics.Graphics import Graphics
 

@@ -48,15 +48,11 @@ pygame
 numpy
 typeguard
 Cython
+ianthe
 ```
 opal only supports Python 3.10 and upper.
-# Runner
-if you are running Windows on your machine, and you'd like to double click on opal source to directly run it:
 
-1) add the opal folder to `PATH`
-2) build the runner using `runner\build.py`
-3) set `opalrun.exe` as the default way of opening `.opal` files
-
+Once files are downloaded on your machine, run `opalc.py build` to build the standard library and the runner executable.
 # Hello World!
 ```
 package opal: import *;
