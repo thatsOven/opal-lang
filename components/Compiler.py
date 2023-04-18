@@ -312,7 +312,7 @@ class Compiler:
         else:
             if self.nextInline:
                 self.nextInline = False
-                if self.__cy: self.__error('"inline" flag can only be used on optimizable functions')
+                if self.__cy: self.__error('"inline" flag can only be used on optimizable functions', objType)
 
             isClass = translates == "class"
 
