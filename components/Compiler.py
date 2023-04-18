@@ -2253,6 +2253,7 @@ class Compiler:
                 txt.write(result)
     
     def compileToPY(self, fileIn, fileOut, top = ""):
+        self.__cy = False
         self.__compileWrite(fileIn, fileOut, top)
 
     def compileToPYX(self, fileIn, fileOut, top = ""):
