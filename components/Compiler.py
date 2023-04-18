@@ -29,7 +29,7 @@ import os
 
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
-    "short", "int", "long", "long long", "float", "bint"
+    "short", "int", "long", "long long", "float", "bint",
     "double", "long double", "list", "object", "str", 
     "tuple", "dict", "range", "bytes", "bytearray", "complex"
 )
