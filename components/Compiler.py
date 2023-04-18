@@ -321,7 +321,7 @@ class Compiler:
 
                 if isClass: 
                     if self.__cy: translates = "cdef class"
-                else: self.__error('$cdef can only be used on classes and optimizable functions')
+                else: self.__error('$cdef can only be used on classes and optimizable functions', objType)
             
             if isClass and argsString == "":
                 self.out += (" " * tabs) + translates + " " + name.tok + "(OpalObject):"
@@ -415,7 +415,7 @@ class Compiler:
 
         if self.nextInline:
             self.nextInline = False
-            self.__error('"inline" flag is not effective on variables declarations')
+            self.__error('"inline" flag is not effective on variables declarations', typeTok)
 
         _, variablesDef = self.getUntilNotInExpr(";", tokens, True, advance = False)
         variablesDef = Tokens(variablesDef)
@@ -994,7 +994,7 @@ class Compiler:
             self.__error('cannot create abstract namespace', kw)
 
         if tmp.tok != "{":
-            self.__error('invalid syntax: expecting "{" after namespace definition')
+            self.__error('invalid syntax: expecting "{" after namespace definition', tmp)
             return loop, objNames
         
         if not self.flags["namespace"]:
@@ -1195,7 +1195,7 @@ class Compiler:
 
             next = tokens.next()
             if next.tok != "(":
-                self.__error('invalid syntax: expecting "(" after "match:"')
+                self.__error('invalid syntax: expecting "(" after "match:"', next)
             
             op = self.getSameLevelParenthesis("(", ")", tokens)
 
