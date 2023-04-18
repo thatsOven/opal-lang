@@ -359,7 +359,7 @@ class Compiler:
         for var in internalVars:
             intObjs[var[0]] = var[1]
 
-        if translates == "cpdef":
+        if translates in ("cpdef", "cdef"):
             self.__nameStack.push((name.tok, "cfn"))
         else:
             self.__nameStack.push((name.tok, "fn", retType))
