@@ -92,6 +92,7 @@ new function arraySwap(array: object, a: int, b: int) void {
 
 inline:
 new function multiSwapRight(array: object, a: int, b: int, len: int) void {
+    new int i;
     for i in range(len) {
         arraySwap(array, a + i, b + i);
     }
@@ -99,6 +100,7 @@ new function multiSwapRight(array: object, a: int, b: int, len: int) void {
 
 inline:
 new function multiSwapLeft(array: object, a: int, b: int, len: int) void {
+    new int i;
     for i in range(len) {
         arraySwap(array, a + len - i - 1, b + len - i - 1);
     }
@@ -107,6 +109,7 @@ new function multiSwapLeft(array: object, a: int, b: int, len: int) void {
 inline:
 new function insertToLeft(array: object, from_: int, to: int) void {
     new dynamic tmp = array[from_];
+    new int i;
     for i in range(from_ - 1, to - 1, -1) {
         array[i + 1] = array[i];
     }
@@ -116,6 +119,7 @@ new function insertToLeft(array: object, from_: int, to: int) void {
 inline:
 new function insertToRight(array: object, from_: int, to: int) void {
     new dynamic tmp = array[from_];
+    new int i;
     for i in range(from_, to) {
         array[i] = array[i + 1];
     }

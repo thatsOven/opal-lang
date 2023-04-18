@@ -52,6 +52,7 @@ new function getReversedRuns(array: object, a: int, b: int) bint {
 $cdef
 $cy wraparound False
 new function insertSort(array: object, a: int, b: int) void {
+    new int i;
     for i in range(a + 1, b) {
         if array[i] < array[i - 1] {
             insertToLeft(array, i, lrBinarySearch(array, array[i], a, i - 1, False));
