@@ -23,7 +23,99 @@
 
 $args ["--static"]
 
-package libs.std: import *;
+$cdef
+$cy wraparound False
+inline: new function swap(array: object, a: int, b: int) void {
+    array[a], array[b] = array[b], array[a];
+}
+
+$cdef
+inline: new function compare(a: object, b: object) int {
+    return (a > b) - (b > a);
+}
+
+$cdef
+$cy cdivision  True
+$cy wraparound False
+inline:
+new function lrBinarySearch(array: object, value: object, a: int, b: int, left: bint) int {
+    new int m, cmp;
+    
+    while a < b {
+        m = a + (b - a) / 2;
+        
+        cmp = compare(value, array[m]);
+
+        if cmp <= 0 if left else cmp < 0 {
+            b = m;
+        } else {
+            a = m + 1;
+        }
+    }
+
+    return a;
+}
+
+$cdef
+$cy wraparound False
+inline:
+new function multiSwapRight(array: object, a: int, b: int, len: int) void {
+    for i in range(len) {
+        swap(array, a + i, b + i);
+    }
+}
+
+$cdef
+$cy wraparound False
+inline:
+new function multiSwapLeft(array: object, a: int, b: int, len: int) void {
+    for i in range(len) {
+        swap(array, a + len - i - 1, b + len - i - 1);
+    }
+}
+
+$cdef
+$cy wraparound False
+inline:
+new function insertToLeft(array: object, from_: int, to: int) void {
+    new dynamic tmp = array[from_];
+    for i in range(from_ - 1, to - 1, -1) {
+        array[i + 1] = array[i];
+    }
+    array[to] = tmp;
+}
+
+$cdef
+$cy wraparound False
+inline:
+new function insertToRight(array: object, from_: int, to: int) void {
+    new dynamic tmp = array[from_];
+    for i in range(from_, to) {
+        array[i] = array[i + 1];
+    }
+    array[to] = tmp;
+}
+
+$cdef
+$cy wraparound False
+inline:
+new function rotate(array: object, a: int, m: int, b: int) void {
+    while b - m > 1 && m - a > 1 {
+        if b - m < m - a {
+            multiSwapRight(array, a, m, b - m);
+            a += b - m;
+        } else {
+            multiSwapLeft(array, a, b - (m - a), m - a);
+            b -= m - a;
+        }
+    }
+
+    if b - m == 1 {
+        insertToLeft(array, m, a);
+    } elif m - a == 1 {
+        insertToRight(array, a, b - 1);
+    }
+}
 
 $cdef
 $cy wraparound False
@@ -96,8 +188,8 @@ new function mergeInPlace(array: object, a: int, m: int, b: int, check: bint = T
     }
 
     if check {
-        b = _lrBinarySearch(array, array[m - 1], m,     b, True);
-        a = _lrBinarySearch(array, array[m]    , a, m - 1, False);
+        b = lrBinarySearch(array, array[m - 1], m,     b, True);
+        a = lrBinarySearch(array, array[m]    , a, m - 1, False);
     }
 
     new int i, j, k;
@@ -107,7 +199,7 @@ new function mergeInPlace(array: object, a: int, m: int, b: int, check: bint = T
         j = m;
         while i < j && j < b {
             if array[i] > array[j] {
-                k = _lrBinarySearch(array, array[i], j, b, True);
+                k = lrBinarySearch(array, array[i], j, b, True);
                 rotate(array, i, j, k);
                 i += k - j;
                 j = k;
@@ -120,7 +212,7 @@ new function mergeInPlace(array: object, a: int, m: int, b: int, check: bint = T
         j = b - 1;
         while j > i && i >= a {
             if array[i] > array[j] {
-                k = _lrBinarySearch(array, array[j], a, i, False);
+                k = lrBinarySearch(array, array[j], a, i, False);
                 rotate(array, k, i + 1, j + 1);
                 j -= i + 1 - k;
                 i = k - 1;
@@ -142,8 +234,8 @@ new function _merge(array: object, a: int, m: int, b: int, check: bint, auxSize:
     }
 
     if check {
-        b = _lrBinarySearch(array, array[m - 1], m, b, True);
-        a = _lrBinarySearch(array, array[m], a, m - 1, False);
+        b = lrBinarySearch(array, array[m - 1], m, b, True);
+        a = lrBinarySearch(array, array[m], a, m - 1, False);
     }
 
     new int size, m1, m2, m3;
@@ -157,7 +249,7 @@ new function _merge(array: object, a: int, m: int, b: int, check: bint, auxSize:
             mergeDown(array, a, m, b, aux);
         } else {
             m2 = m + size / 2;
-            m1 = _lrBinarySearch(array, array[m2], a, m, False);
+            m1 = lrBinarySearch(array, array[m2], a, m, False);
             m3 = m2 - (m - m1);
             m2++;
 
@@ -171,7 +263,7 @@ new function _merge(array: object, a: int, m: int, b: int, check: bint, auxSize:
             mergeUp(array, a, m, b, aux);
         } else {
             m1 = a + size / 2;
-            m2 = _lrBinarySearch(array, array[m1], m, b, True);
+            m2 = lrBinarySearch(array, array[m1], m, b, True);
             m3 = m1 + (m2 - m);
 
             rotateMerge(array, a, m, m1, m2, m3, b, auxSize, aux);

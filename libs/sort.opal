@@ -23,9 +23,16 @@
 $args ["--compile-only", "--static"]
 
 package math: import log2;
-package libs.std: import _reverse as reverse, arraySwap as swap;
 
 $include os.path.join(HOME_DIR, "helpers.opal")
+
+$cdef
+$cy wraparound False
+inline: new function reverse(array: object, a: int, b: int) void {
+    for b--; a < b; a++, b-- {
+        swap(array, a, b);
+    }
+}
 
 $nocompile
 cdef short swapsLen = 120

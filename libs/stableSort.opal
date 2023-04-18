@@ -22,8 +22,15 @@
 
 $args ["--static"]
 
-package libs.std: import *;
-package libs.merge: import _merge;
+$include os.path.join(HOME_DIR, "merge.opal")
+
+$cdef
+$cy wraparound False
+inline: new function reverse(array: object, a: int, b: int) void {
+    for b--; a < b; a++, b-- {
+        swap(array, a, b);
+    }
+}
 
 $cdef
 $cy wraparound False

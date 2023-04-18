@@ -21,7 +21,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-package libs.std: import arraySwap as swap;
+$cdef
+$cy wraparound False
+inline: new function swap(array: object, a: int, b: int) void {
+    array[a], array[b] = array[b], array[a];
+}
 
 $cdef
 $cy cdivision  True
@@ -64,7 +68,7 @@ inline: new function heapSort(array: object, a: int, b: int) void {
 
     new int i;
     for i = b - a; i > 1; i-- {
-        swap(array, a + i - 1);
+        swap(array, a, a + i - 1);
         siftDown(array, 1, i - 1, a);
     }
 }
