@@ -31,6 +31,8 @@ def mode(mode: _TypeMode):
         return cls
     return fn
 
+_AUTOCAST_TYPES = (str, int, float, tuple, list, set, dict, bool, bytes)
+
 def _OPAL_CHECK_TYPE_(value, type_):
     if issubclass(type_, OpalObject):
         match type_._OPAL_TYPEMODE_:
@@ -47,7 +49,7 @@ def _OPAL_CHECK_TYPE_(value, type_):
     orig = value
     try:    
         tmp = type_(value)
-        if type_ not in (str, int): assert tmp == orig
+        if type_ not in _AUTOCAST_TYPES: assert tmp == orig
     except: return check_type(value, type_)
     else:   return tmp 
 
