@@ -64,7 +64,7 @@ new function limitToRange(value, min_, max_, pacman = False, returnChanged = Fal
         if returnChanged {
             return (min_ if pacman else max_), True;
         } else {
-            return max_ if pacman else min_;
+            return min_ if pacman else max_;
         }
     }
 
