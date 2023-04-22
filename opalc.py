@@ -66,7 +66,7 @@ def compileOne(libs, file, compiler):
     compiler.compileToPYX(filename, f"{name}.pyx", top)
     if compiler.hadError: return False
 
-    print("opal -> Cython: Done in " + str(round(default_timer() - time, 4)) + "seconds")
+    print("opal -> Cython: Done in " + str(round(default_timer() - time, 4)) + " seconds")
 
     ok = build(f"{name}.pyx", debug)
                     
@@ -159,7 +159,7 @@ if __name__ == "__main__":
 
             compiler.compileToPYX(sys.argv[2].replace("\\", "\\\\"), f"{name}.pyx", top)
             if not compiler.hadError:
-                print("opal -> Cython: Done in " + str(round(default_timer() - time, 4)) + "seconds")
+                print("opal -> Cython: Done in " + str(round(default_timer() - time, 4)) + " seconds")
 
                 ok = build(f"{name}.pyx", debug)
                     
