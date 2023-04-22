@@ -55,6 +55,8 @@ def build(file, debug = False):
     return ok
 
 def compileOne(libs, file, compiler):
+    time = default_timer()
+
     filename = os.path.join(libs, file)
     name     = file.split(".")[0]
 
@@ -62,9 +64,12 @@ def compileOne(libs, file, compiler):
     top = 'new dynamic HOME_DIR="' + libs + '";'
 
     compiler.compileToPYX(filename, f"{name}.pyx", top)
+    if compiler.hadError: return False
+
+    print("opal -> Cython: Done in " + str(round(default_timer() - time, 4)) + "seconds")
 
     ok = build(f"{name}.pyx", debug)
-                
+                    
     if os.path.exists(f"{name}.pyx"): os.remove(f"{name}.pyx")
     if os.path.exists(f"{name}.c"):   os.remove(f"{name}.c")
 
@@ -75,7 +80,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.4.18 - thatsOven")
+        print("opal compiler v2023.4.22 - thatsOven")
     else:
         compiler = Compiler()
         compiler.handleArgs(sys.argv)
@@ -153,26 +158,28 @@ if __name__ == "__main__":
                 name = name.replace(char, "_")
 
             compiler.compileToPYX(sys.argv[2].replace("\\", "\\\\"), f"{name}.pyx", top)
+            if not compiler.hadError:
+                print("opal -> Cython: Done in " + str(round(default_timer() - time, 4)) + "seconds")
 
-            ok = build(f"{name}.pyx", debug)
-                
-            if os.path.exists("build"): shutil.rmtree("build")
-            if os.path.exists(f"{name}.pyx"): os.remove(f"{name}.pyx")
-            if os.path.exists(f"{name}.c"):   os.remove(f"{name}.c")
+                ok = build(f"{name}.pyx", debug)
+                    
+                if os.path.exists("build"): shutil.rmtree("build")
+                if os.path.exists(f"{name}.pyx"): os.remove(f"{name}.pyx")
+                if os.path.exists(f"{name}.c"):   os.remove(f"{name}.c")
 
-            if ok:
-                if not compiler.module:
-                    if len(sys.argv) == 3:
-                        filename = f"{name}.py"
-                    else:
-                        filename = sys.argv[3].replace("\\", "\\\\")
+                if ok:
+                    if not compiler.module:
+                        if len(sys.argv) == 3:
+                            filename = f"{name}.py"
+                        else:
+                            filename = sys.argv[3].replace("\\", "\\\\")
 
-                    with open(filename, "w") as py:
-                        py.write(f"from os import environ\nenviron['_OPAL_RUN_AS_MAIN_']=''\nimport {name}\ndel environ['_OPAL_RUN_AS_MAIN_']")
+                        with open(filename, "w") as py:
+                            py.write(f"from os import environ\nenviron['_OPAL_RUN_AS_MAIN_']=''\nimport {name}\ndel environ['_OPAL_RUN_AS_MAIN_']")
 
-                print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
-            else:
-                print("Compilation failed")
+                    print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
+                    quit()
+            print("Compilation failed")
         elif sys.argv[1] == "build":
             libs = os.path.join(getHomeDirFromFile(__file__), "libs")
             os.chdir(libs)
