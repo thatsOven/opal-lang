@@ -229,7 +229,7 @@ new function mergeInPlace(array: object, a: int, m: int, b: int, check: bint = T
     }
 }
 
-new dynamic rotateMerge;
+use rotateMerge;
 
 $cy cdivision  True
 $cy wraparound False

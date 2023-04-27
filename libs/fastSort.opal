@@ -26,7 +26,7 @@ $args ["--compile-only", "--static"]
 
 $include os.path.join(HOME_DIR, "helpers.opal")
 $embed from libc.stdlib cimport malloc, free
-new dynamic free;
+use free;
 
 $cdef
 $cy wraparound False
