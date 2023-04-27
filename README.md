@@ -332,6 +332,44 @@ main() {
 	# function can be defined
 }
 ```
+### `use`
+Creates an identifier. This is necessary as every identifier mentioned at the beginning of an expression statement must be known at compile-time.
+For example:
+```
+new function a(x) {
+	b(x - 1);
+}
+
+new function b(x) {
+	if x < 2 {
+		a(x);
+	}
+}
+```
+Here, the compiler will give us an error:
+```
+error (in test.opal: a(), line 2, pos 4): unknown statement or identifier
+ 1 | new function a(x) {
+ 2 |     b(x - 1);
+   |     ^
+ 3 | }
+ 4 | 
+ 5 | new function b(x) {
+```
+To solve this, we can create the identifier ourselves:
+```
+use b;
+
+new function a(x) {
+	b(x - 1);
+}
+
+new function b(x) {
+	if x < 2 {
+		a(x);
+	}
+}
+```
 ### `namespace`
 Creates a namespace. Effectively just a class that can't inherit from other classes and can't be instantiated.
 ```

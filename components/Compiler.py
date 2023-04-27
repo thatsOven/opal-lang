@@ -862,18 +862,7 @@ class Compiler:
         self.__flagsError("use", tokens.last())
         next = tokens.next()
 
-        peek = tokens.peek()
-        if peek is not None and peek.tok == "as":
-            translates = next
-            next = tokens.next()
-
-            if not tokens.isntFinished():
-                self.__error('invalid syntax: expecting an identifier name after "as"', next)
-                return loop, objNames
-            
-            self.newIdentifier(tokens.next(), translates.tok)
-        else:
-            self.newIdentifier(next, "::py")
+        self.newObj(objNames, next, "dynamic")
 
         peek = tokens.peek()
         if peek is None or peek.tok != ";":
@@ -1699,13 +1688,6 @@ class Compiler:
               objNames[nameToken.tok] = "dynamic"
         else: objNames[nameToken.tok] = type_
 
-    def newIdentifier(self, nameToken : Token, translatesTo):
-        if not nameToken.tok.isidentifier():
-            self.__error(f'invalid identifier name "{nameToken.tok}"', nameToken)
-            return
-        
-        self.useIdentifiers[nameToken.tok] = translatesTo
-
     def checkDirectNext(self, ch, msg, tokens : Tokens):
         next = tokens.next()
         if next.tok != ch:
@@ -1884,17 +1866,6 @@ class Compiler:
             elif next.tok in objNames:
                 tokens.pos -= 1
                 self.__variablesHandler(tokens, tabs, objNames)
-            elif next.tok in self.useIdentifiers:
-                if self.useIdentifiers[next.tok] == "::py":
-                    next = tokens.next()
-                    if next.tok != ".":
-                        self.__error('expecting "." after custom identifier', next)
-                        continue
-                else:
-                    tokens.pos -= 1
-
-                _, expr = self.getUntilNotInExpr(";", tokens, True, advance = False)
-                self.out += (" " * tabs) + Tokens(expr).join() + "\n"
             elif next.tok == "__OPALSIG":
                 kw = tokens.last()
 
@@ -2180,10 +2151,9 @@ class Compiler:
         return self.replaceConsts(result, self.consts)
     
     def reset(self):
-        self.useIdentifiers = {}
-        self.macros         = {}
-        self.consts         = {}
-        self.autoTypes      = {}
+        self.macros    = {}
+        self.consts    = {}
+        self.autoTypes = {}
 
         self.out      = ""
         self.hadError = False
