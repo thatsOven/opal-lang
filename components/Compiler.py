@@ -860,15 +860,25 @@ class Compiler:
     
     def __use(self, tokens : Tokens, tabs, loop, objNames):
         self.__flagsError("use", tokens.last())
-        next = tokens.next()
+        _, identifiers = self.getUntilNotInExpr(";", tokens, True, advance = False)
+        identifiers = Tokens(identifiers)
+        
+        next = identifiers.next()
+        while True:
+            name = next
 
-        self.newObj(objNames, next, "dynamic")
+            self.newObj(objNames, name, "dynamic")
 
-        peek = tokens.peek()
-        if peek is None or peek.tok != ";":
-            self.__error('expecting ";" after use identifier definition', next)
-        else: tokens.next()
+            if not identifiers.isntFinished(): break
+                
+            next = identifiers.next()
+            if next.tok == ",":
+                next = identifiers.next()
+            else:
+                self.__error('invalid syntax: expecting ","', next) 
 
+            if next == "": break
+        
         return loop, objNames
     
     def __simpleBlock(self, keyw, kwname, push = None):

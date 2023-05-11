@@ -25,8 +25,8 @@
 $args ["--compile-only", "--static"]
 
 $include os.path.join(HOME_DIR, "helpers.opal")
-$embed from libc.stdlib cimport malloc, free
-use free;
+$embed from cpython.mem cimport PyMem_Malloc, PyMem_Free
+use PyMem_Free;
 
 $cdef
 $cy wraparound False
@@ -85,8 +85,8 @@ $macro endSection
         s = offset[i];
     }
 
-    free(count);
-    free(offset);
+    PyMem_Free(count);
+    PyMem_Free(offset);
 $end
 
 $cy wraparound False
@@ -98,9 +98,9 @@ new function __sortWithKey(array: object, a: int, b: int, getfn: object) void {
     new int auxLen  = b - a;
     new float CONST = auxLen / float(max_ - min_ + 1);
 
-    new dynamic offset, count;
-    $embed cdef size_t* count = <size_t*>malloc((auxLen + 1) * sizeof(size_t))
-    $embed cdef size_t* offset = <size_t*>malloc((auxLen + 1) * sizeof(size_t))
+    $embed cdef size_t* count  = <size_t*>PyMem_Malloc((auxLen + 1) * sizeof(size_t))
+    $embed cdef size_t* offset = <size_t*>PyMem_Malloc((auxLen + 1) * sizeof(size_t))
+    use count, offset;
     
     new int i;
     for i in range(auxLen + 1) {
@@ -157,9 +157,9 @@ new function __sort(array: object, a: int, b: int) void {
     new int auxLen  = b - a;
     new float CONST = auxLen / float(max_ - min_ + 1);
 
-    new dynamic offset, count;
-    $embed cdef size_t* count = <size_t*>malloc((auxLen + 1) * sizeof(size_t))
-    $embed cdef size_t* offset = <size_t*>malloc((auxLen + 1) * sizeof(size_t))
+    $embed cdef size_t* count  = <size_t*>PyMem_Malloc((auxLen + 1) * sizeof(size_t))
+    $embed cdef size_t* offset = <size_t*>PyMem_Malloc((auxLen + 1) * sizeof(size_t))
+    use count, offset;
     
     new int i;
     for i in range(auxLen + 1) {
