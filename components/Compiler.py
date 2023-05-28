@@ -42,7 +42,8 @@ CYTHON_TO_PY_TYPES = {
     "long long": "int",
     "double": "float",
     "long double": "float",
-    "void": "None"
+    "void": "None",
+    "bint": "bool"
 }
      
 class Compiler:
@@ -123,7 +124,6 @@ class Compiler:
 
             args = Tokens(args)
             internalVars = []
-            usedCyTypes  = None
             if len(args.tokens) != 0:
                 while True:
                     next = args.next()
@@ -133,19 +133,15 @@ class Compiler:
                     argName = next.tok
 
                     if not args.isntFinished():
-                        internalVars.append((argName, "dynamic"))
+                        internalVars.append([argName, "dynamic"])
                         break
                     
                     next = args.peek()
                     if next is not None and next.tok == ":":
                         args.next()
-                        typeTok = args.peek()
                         next, type_ = self.getUntilNotInExpr(("=", ","), args, True, False, False)
                         if next != "" and next.tok in ("=", ","): args.pos -= 1
                         type_ = Tokens(type_).join()
-
-                        if type_ in CYTHON_TO_PY_TYPES:
-                            usedCyTypes = typeTok
                     else:
                         type_ = "dynamic"
 
@@ -153,7 +149,7 @@ class Compiler:
                         self.__error('"auto" cannot be used as a parameter type', next)
                         type_ = "dynamic"
 
-                    internalVars.append((argName, type_))
+                    internalVars.append([argName, type_])
 
                     if not args.isntFinished(): break
 
@@ -172,8 +168,6 @@ class Compiler:
                             next = args.next()
 
                     if next is None: break
-
-            argsString = args.join()
                 
             if self.nextAbstract:
                 self.nextAbstract = False
@@ -203,6 +197,11 @@ class Compiler:
                     if retType == "auto":
                         self.__error('"auto" cannot be used as a return type', next)
                         retType = "dynamic"
+
+                if retType in CYTHON_TO_PY_TYPES:
+                    retType = CYTHON_TO_PY_TYPES[retType]
+
+                argsString = ",".join([(f"{n}:{CYTHON_TO_PY_TYPES[t]}" if t in CYTHON_TO_PY_TYPES else f"{n}:{t}") for n, t in internalVars])
                         
                 if retType == "dynamic":
                     self.out += (" " * tabs) + translates + " " + name.tok + f"({argsString}):pass\n"
@@ -219,6 +218,15 @@ class Compiler:
                 self.newObj(objNames, name, "class")
 
                 next = self.checkDirectNext(";", "record definition", tokens)
+
+                if retType in CYTHON_TO_PY_TYPES:
+                    retType = CYTHON_TO_PY_TYPES[retType]
+
+                for i in range(len(internalVars)):
+                    if internalVars[i][1] in CYTHON_TO_PY_TYPES:
+                        internalVars[i][1] = CYTHON_TO_PY_TYPES[internalVars[i][1]]
+
+                argsString = ",".join([f"{n}:{t}" for n, t in internalVars])
 
                 self.out += (
                     (" " * tabs) + "class " + name.tok + ":\n" +
@@ -240,6 +248,7 @@ class Compiler:
                 self.__error('invalid syntax: expecting "{" or type identifier', next)
                 return loop, objNames
 
+            canCpdef = False
             if peek.tok == "{":
                 tokens.next()
                 retType = "dynamic"
@@ -251,7 +260,6 @@ class Compiler:
                     self.__error('"auto" cannot be used as a return type', next)
                     retType = "dynamic"
 
-                canCpdef = False
                 if self.__cy:
                     if (not hasThis) and translates == "def" and retType in CYTHON_FN_TYPES:
                         canCpdef = True
@@ -262,20 +270,19 @@ class Compiler:
 
                         if canCpdef: 
                             translates = "cpdef"
-                            usedCyTypes = None
-
                             cyInternalVars = internalVars.copy()
                             for i in range(len(internalVars)):
                                 internalVars[i] = (internalVars[i][0], "dynamic")
 
-                if (not canCpdef) and retType in CYTHON_TO_PY_TYPES:
+            if (not canCpdef):
+                if retType in CYTHON_TO_PY_TYPES:
                     retType = CYTHON_TO_PY_TYPES[retType]
 
-                if usedCyTypes:
-                    if hasThis:
-                        self.__error("unable to use Cython types in a method", usedCyTypes)
-                    else:
-                        self.__error("unable to use Cython types in a function that cannot be automatically optimized. Switch to opal/Python types or change the function definition", usedCyTypes)
+                for i in range(len(internalVars)):
+                    if internalVars[i][1] in CYTHON_TO_PY_TYPES:
+                        internalVars[i][1] = CYTHON_TO_PY_TYPES[internalVars[i][1]]
+
+                argsString = ",".join([f"{n}:{t}" for n, t in internalVars])
         else:
             argsString = ""
             
