@@ -318,10 +318,7 @@ class Compiler:
 
             if self.nextCdef:
                 self.nextCdef = False
-
-                if isClass: 
-                    if self.__cy: translates = "cdef class"
-                else: self.__error('$cdef can only be used on classes and optimizable functions', objType)
+                self.__error('$cdef can only be used on classes and optimizable functions', objType)
             
             if isClass and argsString == "":
                 self.out += (" " * tabs) + translates + " " + name.tok + "(OpalObject):"
