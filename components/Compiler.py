@@ -201,7 +201,16 @@ class Compiler:
                 if retType in CYTHON_TO_PY_TYPES:
                     retType = CYTHON_TO_PY_TYPES[retType]
 
-                argsString = ",".join([(f"{n}:{CYTHON_TO_PY_TYPES[t]}" if t in CYTHON_TO_PY_TYPES else f"{n}:{t}") for n, t in internalVars])
+                argsList = []
+                for n, t in internalVars:
+                    if t in CYTHON_TO_PY_TYPES:
+                        t = CYTHON_TO_PY_TYPES[t]
+
+                    if t in ("dynamic", "auto"):
+                        argsList.append(n)
+                    else:
+                        argsList.append(f"{n}:{t}")
+                argsString = ",".join(argsList)
                         
                 if retType == "dynamic":
                     self.out += (" " * tabs) + translates + " " + name.tok + f"({argsString}):pass\n"
@@ -226,7 +235,7 @@ class Compiler:
                     if internalVars[i][1] in CYTHON_TO_PY_TYPES:
                         internalVars[i][1] = CYTHON_TO_PY_TYPES[internalVars[i][1]]
 
-                argsString = ",".join([f"{n}:{t}" for n, t in internalVars])
+                argsString = ",".join([(n if t in ("dynamic", "auto") else f"{n}:{t}") for n, t in internalVars])
 
                 self.out += (
                     (" " * tabs) + "class " + name.tok + ":\n" +
@@ -282,7 +291,7 @@ class Compiler:
                     if internalVars[i][1] in CYTHON_TO_PY_TYPES:
                         internalVars[i][1] = CYTHON_TO_PY_TYPES[internalVars[i][1]]
 
-                argsString = ",".join([f"{n}:{t}" for n, t in internalVars])
+                argsString = ",".join([(n if t in ("dynamic", "auto") else f"{n}:{t}") for n, t in internalVars])
         else:
             argsString = ""
             
