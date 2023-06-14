@@ -136,6 +136,12 @@ Creates a basic class containing the specified properties. Example:
 ```
 new record RecordName(arg0, arg1, arg2);
 ```
+Records can also inherit from classes, using the following syntax:
+```
+new class ParentClass {}
+
+new record RecordName(arg0, arg1, arg2) <- ParentClass;
+```
 
 ## Conditional statements
 ### `if`

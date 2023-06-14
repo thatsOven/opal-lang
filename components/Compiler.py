@@ -226,10 +226,17 @@ class Compiler:
 
                 self.newObj(objNames, name, "class")
 
-                next = self.checkDirectNext(";", "record definition", tokens)
-
-                if retType in CYTHON_TO_PY_TYPES:
-                    retType = CYTHON_TO_PY_TYPES[retType]
+                parents = ""
+                next = tokens.peek()
+                if next is None:
+                    self.__error('expecting ";" after record definition', tokens.last())
+                elif next.tok == "<-":
+                    tokens.next()
+                    parents = "(" + Tokens(self.getUntilNotInExpr(";", tokens, True, advance = False)[1]).join() + ")"
+                elif next.tok == ";":
+                    tokens.next()
+                else:
+                    self.__error('expecting ";" or "<-" after record definition', next)
 
                 for i in range(len(internalVars)):
                     if internalVars[i][1] in CYTHON_TO_PY_TYPES:
@@ -238,7 +245,7 @@ class Compiler:
                 argsString = ",".join([(n if t in ("dynamic", "auto") else f"{n}:{t}") for n, t in internalVars])
 
                 self.out += (
-                    (" " * tabs) + "class " + name.tok + ":\n" +
+                    (" " * tabs) + "class " + name.tok + parents + ":\n" +
                     (" " * (tabs + 1)) + f"def __init__(this,{argsString}):\n"
                 )
 
