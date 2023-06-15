@@ -337,11 +337,11 @@ class Compiler:
                 translates = "cdef"
 
             argsList = []
-            for name, type_, _, default in cyInternalVars:
+            for name_, type_, _, default in cyInternalVars:
                 if default == "":
-                    argsList.append(f"{type_} {name}")
+                    argsList.append(f"{type_} {name_}")
                 else:
-                    argsList.append(f"{type_} {name}={default}")
+                    argsList.append(f"{type_} {name_}={default}")
 
             argsString = ",".join(argsList)
 
