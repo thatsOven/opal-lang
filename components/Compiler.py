@@ -188,6 +188,8 @@ class Compiler:
                         else: 
                             next = tmp
                     else:
+                        internalVars.append([argName, type_, mode, ""])
+
                         if next.tok != ",":
                             self.__error("invalid syntax: arguments should be separated by commas", next)
                         else:
