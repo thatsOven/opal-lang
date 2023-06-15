@@ -45,6 +45,25 @@ CYTHON_TO_PY_TYPES = {
     "void": "None",
     "bint": "bool"
 }
+
+def getArgsString(internalVars):
+    argsList = []
+    for name, type_, mode, default in internalVars:
+        if type_ in CYTHON_TO_PY_TYPES:
+            type_ = CYTHON_TO_PY_TYPES[type_]
+
+        if type_ in ("dynamic", "auto"):
+            if default == "":
+                argsList.append(mode + name)
+            else:
+                argsList.append(mode + name + "=" + default)
+        else:
+            if default == "":
+                argsList.append(f"{mode}{name}:{type_}")
+            else:
+                argsList.append(f"{mode}{name}:{type_}={default}")
+
+    return ",".join(argsList)
      
 class Compiler:
     def __new(self, tokens : Tokens, tabs, loop, objNames):
@@ -127,13 +146,15 @@ class Compiler:
             if len(args.tokens) != 0:
                 while True:
                     next = args.next()
+                    mode = ""
                     if next.tok in ("**", "*"):
+                        mode = next.tok
                         next = args.next()
 
                     argName = next.tok
 
                     if not args.isntFinished():
-                        internalVars.append([argName, "dynamic"])
+                        internalVars.append([argName, "dynamic", mode, ""])
                         break
                     
                     next = args.peek()
@@ -149,18 +170,23 @@ class Compiler:
                         self.__error('"auto" cannot be used as a parameter type', next)
                         type_ = "dynamic"
 
-                    internalVars.append([argName, type_])
-
-                    if not args.isntFinished(): break
+                    if not args.isntFinished(): 
+                        internalVars.append([argName, type_, mode, ""])
+                        break
 
                     next = args.peek()
 
                     if next.tok == "=":
                         args.next()
-                        tmp = self.getUntilNotInExpr(",", args, advance = False, errorNotFound = False)
+                        tmp, default = self.getUntilNotInExpr(",", args, True, False, False)
+                        default = Tokens(default).join()
+
+                        internalVars.append([argName, type_, mode, default])
                         
-                        if tmp == "": break
-                        else:         next = tmp
+                        if tmp == "": 
+                            break
+                        else: 
+                            next = tmp
                     else:
                         if next.tok != ",":
                             self.__error("invalid syntax: arguments should be separated by commas", next)
@@ -201,16 +227,7 @@ class Compiler:
                 if retType in CYTHON_TO_PY_TYPES:
                     retType = CYTHON_TO_PY_TYPES[retType]
 
-                argsList = []
-                for n, t in internalVars:
-                    if t in CYTHON_TO_PY_TYPES:
-                        t = CYTHON_TO_PY_TYPES[t]
-
-                    if t in ("dynamic", "auto"):
-                        argsList.append(n)
-                    else:
-                        argsList.append(f"{n}:{t}")
-                argsString = ",".join(argsList)
+                argsString = getArgsString(internalVars)
                         
                 if retType == "dynamic":
                     self.out += (" " * tabs) + translates + " " + name.tok + f"({argsString}):pass\n"
@@ -238,11 +255,7 @@ class Compiler:
                 else:
                     self.__error('expecting ";" or "<-" after record definition', next)
 
-                for i in range(len(internalVars)):
-                    if internalVars[i][1] in CYTHON_TO_PY_TYPES:
-                        internalVars[i][1] = CYTHON_TO_PY_TYPES[internalVars[i][1]]
-
-                argsString = ",".join([(n if t in ("dynamic", "auto") else f"{n}:{t}") for n, t in internalVars])
+                argsString = getArgsString(internalVars)
 
                 self.out += (
                     (" " * tabs) + "class " + name.tok + parents + ":\n" +
@@ -280,7 +293,7 @@ class Compiler:
                     if (not hasThis) and translates == "def" and retType in CYTHON_FN_TYPES:
                         canCpdef = True
                         for variable in internalVars:
-                            if variable[1] not in CYTHON_FN_TYPES:
+                            if variable[1] not in CYTHON_FN_TYPES or variable[2] != "":
                                 canCpdef = False
                                 break
 
@@ -288,17 +301,13 @@ class Compiler:
                             translates = "cpdef"
                             cyInternalVars = internalVars.copy()
                             for i in range(len(internalVars)):
-                                internalVars[i] = (internalVars[i][0], "dynamic")
+                                internalVars[i] = (internalVars[i][0], "dynamic", "", internalVars[i][3])
 
             if (not canCpdef):
                 if retType in CYTHON_TO_PY_TYPES:
                     retType = CYTHON_TO_PY_TYPES[retType]
 
-                for i in range(len(internalVars)):
-                    if internalVars[i][1] in CYTHON_TO_PY_TYPES:
-                        internalVars[i][1] = CYTHON_TO_PY_TYPES[internalVars[i][1]]
-
-                argsString = ",".join([(n if t in ("dynamic", "auto") else f"{n}:{t}") for n, t in internalVars])
+                argsString = getArgsString(internalVars)
         else:
             argsString = ""
             
@@ -325,7 +334,14 @@ class Compiler:
                 self.nextCdef = False
                 translates = "cdef"
 
-            argsString = ",".join([f"{t} {n}" for n, t in cyInternalVars])
+            argsList = []
+            for name, type_, _, default in cyInternalVars:
+                if default == "":
+                    argsList.append(f"{type_} {name}")
+                else:
+                    argsList.append(f"{type_} {name}={default}")
+
+            argsString = ",".join(argsList)
 
             if self.nextInline:
                 self.nextInline = False
