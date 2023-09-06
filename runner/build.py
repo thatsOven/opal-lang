@@ -5,7 +5,7 @@ from ianthe               import Ianthe
 
 spath = getcwd()
 
-with open("opalrun.py", "w") as script:
+with open("opal.py", "w") as script:
     script.write("from subprocess import run\nfrom sys import argv\n")
     chdir("..")
     p = path.join(getcwd(), 'opalc.py').replace("\\", "\\\\")
@@ -15,7 +15,7 @@ chdir(spath)
 
 ianthe = Ianthe()
 ianthe.config = {
-    "source"     : "opalrun.py",
+    "source"     : "opal.py",
     "destination": "run",
     "onefile"    : True,
     "icon"       : "icon.ico"
@@ -23,7 +23,7 @@ ianthe.config = {
 
 ianthe.execute()
 
-remove("opalrun.py")
+remove("opal.py")
 
 chdir("..")
 copy_tree(path.join(spath, "run"), getcwd())
