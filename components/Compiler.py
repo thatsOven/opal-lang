@@ -486,32 +486,7 @@ class Compiler:
                 if cyType:
                     self.out += (" " * tabs) + "cdef " + type_ + " " + name.tok + "=" + value + "\n"
                 else:
-                    dyn = unchecked or type_ in ("auto", "dynamic") or self.typeMode == "none"
-
-                    if self.eval:
-                        try:    located = safeLocate(type_)
-                        except: pass
-                        else:
-                            try:
-                                if dyn: evaluated = eval(value)
-                                else:   evaluated = located(eval(value))
-                            except: pass
-                            else:
-                                if dyn: code = name.tok + "=" + str(evaluated)
-                                else:   code = name.tok + ":" + type_ + "=" + str(evaluated)
-
-                                try:    exec(code)
-                                except: pass
-                                else:   
-                                    if dyn: ok = eval(value) == evaluated
-                                    else:   ok = located(eval(value)) == evaluated
-
-                                    if ok:
-                                        self.out += (" " * tabs) + code + "\n"
-                                        if next == "": break
-                                        continue
-                    
-                    if dyn:
+                    if unchecked or type_ in ("auto", "dynamic") or self.typeMode == "none":
                         self.out += (" " * tabs) + name.tok + "=" + value + "\n"
                     else:
                         self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_CHECK_TYPE_({value},{type_})\n"
@@ -644,29 +619,7 @@ class Compiler:
             unchecked = True
         else: unchecked = False
            
-        dyn = cyFunction or unchecked or fnProperties[2] == "dynamic" or self.typeMode == "none"
-
-        if self.eval:
-            try:    located = safeLocate(fnProperties[2])
-            except: pass
-            else:
-                joined = Tokens(val).join()
-                try:
-                    if dyn: evaluated = eval(joined)
-                    else:   evaluated = located(eval(joined))
-                except: pass
-                else:
-                    try:    exec("_=" + str(evaluated))
-                    except: pass
-                    else:   
-                        if dyn: ok = eval(joined) == evaluated
-                        else:   ok = located(eval(joined)) == evaluated
-
-                        if ok:
-                            self.out += (" " * tabs) + "return " + str(evaluated) + "\n"
-                            return loop, objNames
-
-        if dyn:
+        if cyFunction or unchecked or fnProperties[2] == "dynamic" or self.typeMode == "none":
             self.out += (" " * tabs) + Tokens([Token("return")] + val).join() + "\n"
         else:
             self.out += (" " * tabs) + Tokens(
@@ -1639,7 +1592,6 @@ class Compiler:
         self.preConsts   = {}
         self.__nameStack = NameStack()
 
-        self.eval        = True
         self.static      = False
         self.__cy        = False
         self.noCompile   = False
@@ -2279,10 +2231,6 @@ class Compiler:
         self.__compileWrite(fileIn, fileOut, top, "cimport cython\nfrom os import environ as _ENVIRON_")
 
     def handleArgs(self, args: list):
-        if "--noeval" in args:
-            self.eval = False
-            args.remove("--noeval")
-
         if "--static" in args:
             self.static = True
             args.remove("--static")

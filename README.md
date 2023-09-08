@@ -18,9 +18,6 @@ NOTE: due to how the compiler works, it might not detect some syntax errors, esp
 		- `force`: Always forces types. Can break programs as forced typing can't always be performed;
 		- `none`: Uses dynamic typing for all variables.
 	- **Usage**: --type-mode mode
-- `--noeval`
-	- Avoids evaluating constant expressions when defining new variables
-	- **Usage**: --noeval
 - `--disable-notes`
 	- Disables notes during compilation
 	- **Usage**: --disable-notes
@@ -557,7 +554,7 @@ if a != b {
 ### `$args`
 Passes the compiler some default arguments. Supported arguments are:
 ```
---noeval, --static, --nostatic, --nocompile, --compile-only, --type-mode
+--static, --nostatic, --nocompile, --compile-only, --type-mode
 ```
 Example:
 ```

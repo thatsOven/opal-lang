@@ -80,7 +80,7 @@ def getHomeDirFromFile(file):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print("opal compiler v2023.9.6 - thatsOven")
+        print("opal compiler v2023.9.8 - thatsOven")
     else:
         compiler = Compiler()
         compiler.handleArgs(sys.argv)
