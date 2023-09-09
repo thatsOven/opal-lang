@@ -164,11 +164,7 @@ class Graphics:
             if self.framerate is not None:
                 self.__clock.tick(self.framerate)
             else:
-                self.__clock.tick()
-
-            if self.__updateSize:
-                self.screen     = pygame.display.get_surface()
-                self.resolution = Vector().fromList(self.screen.get_size())
+                self.__clock.tick()                
 
             if self.__showFps:
                 self.setCaption(self.caption + " - FPS: " + str(round(self.__clock.get_fps(), 3)), False)
@@ -182,10 +178,18 @@ class Graphics:
                 self.drawLoop()
                 
                 for event in pygame.event.get():
+                    if self.__updateSize and event.type == pygame.VIDEORESIZE:
+                        self.screen     = pygame.display.get_surface()
+                        self.resolution = Vector().fromList(self.screen.get_size())
+
                     if event.type in self.eventActions:
                         self.eventActions[event.type](event)
 
             for event in pygame.event.get():
+                if self.__updateSize and event.type == pygame.VIDEORESIZE:
+                    self.screen     = pygame.display.get_surface()
+                    self.resolution = Vector().fromList(self.screen.get_size())
+
                 if event.type in self.eventActions:
                     self.eventActions[event.type](event)
 
@@ -208,6 +212,10 @@ class Graphics:
 
     def updateEvents(self):
         for event in pygame.event.get():
+            if self.__updateSize and event.type == pygame.VIDEORESIZE:
+                self.screen     = pygame.display.get_surface()
+                self.resolution = Vector().fromList(self.screen.get_size())
+
             if event.type in self.eventActions:
                 self.eventActions[event.type](event)
 
