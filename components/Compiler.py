@@ -25,6 +25,7 @@ SOFTWARE.
 from components.utils  import *
 from components.Tokens import *
 from importlib         import import_module
+from pathlib           import Path
 import os
 
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
@@ -1981,6 +1982,37 @@ class Compiler:
             result += f"__OPALSIG[EMBED_INFER]({tabs})." + strippedLine.rstrip() + ";\n"
 
         return result
+    
+    def __include(self, result, file):
+        self.__manualSig = False
+        result += f'__OPALSIG[PUSH_NAME]("{os.path.basename(file)}","file")\n'
+        if file.endswith(".py") or file.endswith(".pyx"):
+            result += self.__readEmbed(file)
+        else:
+            result += self.__preCompiler(self.readFile(file)) + "\n"
+        return result + "__OPALSIG[POP_NAME]()\n"
+    
+    def __lookup(self, files, module, result):
+        for file in files:
+            if len(module) == 1 and (file.endswith(".opal") or file.endswith(".py") or (self.__cy and file.endswith(".pyx"))):
+                if (
+                    (file.endswith(".opal") and module[0] != file[:-5]) and
+                    (file.endswith(".py")   and module[0] != file[:-3]) and
+                    (file.endswith(".pyx")  and module[0] != file[:-4])
+                ): continue
+
+                return self.__include(result, file)
+            elif os.path.isdir(file) and file == module[0]:
+                if len(module) == 1:
+                    for file in [os.path.join(file, f) for f in os.listdir(file) if f.endswith(".opal") or f.endswith(".py") or (self.__cy and f.endswith(".pyx"))]:
+                        result = self.__include(result, file)
+                    
+                    return result
+                else:
+                    module.pop(0)
+                    return self.__lookup(os.listdir(file), module)
+        
+        return result
 
     def __preCompiler(self, source):
         result = ""
@@ -2032,14 +2064,12 @@ class Compiler:
                 case "includeDirectory":
                     fileDir = self.getDir(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
 
-                    for file in [os.path.join(fileDir, f) for f in os.listdir(fileDir) if f.endswith(".opal") or f.endswith(".py") or (self.__cy and fileDir.endswith(".pyx"))]:
-                        self.__manualSig = False
-                        result += f'__OPALSIG[PUSH_NAME]("{os.path.basename(file)}","file")\n'
-                        if file.endswith(".py") or fileDir.endswith(".pyx"):
-                            result += self.__readEmbed(file)
-                        else:
-                            result += self.__preCompiler(self.readFile(file)) + "\n"
-                        result += "__OPALSIG[POP_NAME]()\n"
+                    for file in [os.path.join(fileDir, f) for f in os.listdir(fileDir) if f.endswith(".opal") or f.endswith(".py") or (self.__cy and f.endswith(".pyx"))]:
+                        result = self.__include(result, file)
+                case "import":
+                    module = Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join().split(".")
+                    files = os.listdir(eval(self.preConsts["HOME_DIR"])) + os.listdir(str(Path(__file__).parent.absolute()))
+                    result = self.__lookup(files, module, result)
                 case "define":
                     name    = tokenizedLine.next().tok
                     content = Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()

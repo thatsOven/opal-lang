@@ -22,8 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from pydoc import locate
-
 class NameStack:
     def __init__(self):
         self.array = []
@@ -95,8 +93,3 @@ class Macro:
 
     def add(self, line):
         self.code += line
-
-def safeLocate(type_):
-    if type_ in ("int", "float", "str", "tuple", "set", "list", "dict", "bool"):
-        return locate(type_)
-    raise Exception()

@@ -60,8 +60,8 @@ def compileOne(libs, file, compiler):
     filename = os.path.join(libs, file)
     name     = file.split(".")[0]
 
-    compiler.preConsts["HOME_DIR"] = f'"{libs}"'
-    top = 'new dynamic HOME_DIR="' + libs + '";'
+    compiler.preConsts["HOME_DIR"] = f'r"{libs}"'
+    top = 'new dynamic HOME_DIR=r"' + libs + '";'
 
     compiler.compileToPYX(filename, f"{name}.pyx", top)
     if compiler.hadError: return False
@@ -76,7 +76,7 @@ def compileOne(libs, file, compiler):
     return ok
 
 def getHomeDirFromFile(file):
-    return str(Path(file).parent.absolute()).replace("\\", "\\\\\\\\")
+    return str(Path(file).parent.absolute())
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
@@ -95,9 +95,9 @@ if __name__ == "__main__":
             idx = sys.argv.index("--dir")
             sys.argv.pop(idx)
 
-            drt = sys.argv.pop(idx).replace("\\", "\\\\")
-            compiler.preConsts["HOME_DIR"] = f'"{drt}"'
-            top = 'new dynamic HOME_DIR="' + drt + '";'
+            drt = sys.argv.pop(idx)
+            compiler.preConsts["HOME_DIR"] = f'r"{drt}"'
+            top = 'new dynamic HOME_DIR=r"' + drt + '";'
         else:
             findDir = True
 
@@ -110,14 +110,14 @@ if __name__ == "__main__":
 
             if findDir:
                 drt = getHomeDirFromFile(sys.argv[2])
-                compiler.preConsts["HOME_DIR"] = f'"{drt}"'
-                top = 'new dynamic HOME_DIR="' + drt + '";'
+                compiler.preConsts["HOME_DIR"] = f'r"{drt}"'
+                top = 'new dynamic HOME_DIR=r"' + drt + '";'
 
             name = os.path.basename(sys.argv[2]).split(".")[0]
             if len(sys.argv) == 3:
-                compiler.compileToPYX(sys.argv[2].replace("\\", "\\\\"), f"{name}.pyx", top)
+                compiler.compileToPYX(sys.argv[2], f"{name}.pyx", top)
             else:
-                compiler.compileToPYX(sys.argv[2].replace("\\", "\\\\"), sys.argv[3].replace("\\", "\\\\"), top)
+                compiler.compileToPYX(sys.argv[2], sys.argv[3], top)
 
             if not compiler.hadError:
                 print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
@@ -130,14 +130,14 @@ if __name__ == "__main__":
 
             if findDir:
                 drt = getHomeDirFromFile(sys.argv[2])
-                compiler.preConsts["HOME_DIR"] = f'"{drt}"'
-                top = 'new dynamic HOME_DIR="' + drt + '";'
+                compiler.preConsts["HOME_DIR"] = f'r"{drt}"'
+                top = 'new dynamic HOME_DIR=r"' + drt + '";'
 
             name = os.path.basename(sys.argv[2]).split(".")[0]
             if len(sys.argv) == 3:
-                compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), f"{name}.py", top)
+                compiler.compileToPY(sys.argv[2], f"{name}.py", top)
             else:
-                compiler.compileToPY(sys.argv[2].replace("\\", "\\\\"), sys.argv[3].replace("\\", "\\\\"), top)
+                compiler.compileToPY(sys.argv[2], sys.argv[3], top)
 
             if not compiler.hadError:
                 print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
@@ -150,14 +150,14 @@ if __name__ == "__main__":
 
             if findDir:
                 drt = getHomeDirFromFile(sys.argv[2])
-                compiler.preConsts["HOME_DIR"] = f'"{drt}"'
-                top = 'new dynamic HOME_DIR="' + drt + '";'
+                compiler.preConsts["HOME_DIR"] = f'r"{drt}"'
+                top = 'new dynamic HOME_DIR=r"' + drt + '";'
 
             name = os.path.basename(sys.argv[2]).split(".")[0]
             for char in ILLEGAL_CHARS:
                 name = name.replace(char, "_")
 
-            compiler.compileToPYX(sys.argv[2].replace("\\", "\\\\"), f"{name}.pyx", top)
+            compiler.compileToPYX(sys.argv[2], f"{name}.pyx", top)
             if not compiler.hadError:
                 print("opal -> Cython: Done in " + str(round(default_timer() - time, 4)) + " seconds")
 
@@ -172,7 +172,7 @@ if __name__ == "__main__":
                         if len(sys.argv) == 3:
                             filename = f"{name}.py"
                         else:
-                            filename = sys.argv[3].replace("\\", "\\\\")
+                            filename = sys.argv[3]
 
                         with open(filename, "w") as py:
                             py.write(f"from os import environ\nenviron['_OPAL_RUN_AS_MAIN_']=''\nimport {name}\ndel environ['_OPAL_RUN_AS_MAIN_']")
@@ -203,15 +203,15 @@ if __name__ == "__main__":
                 os.chdir(os.path.join(getHomeDirFromFile(__file__), "runner"))
                 import runner.build
         else:
-            sys.argv[1] = sys.argv[1].replace("\\", "\\\\")
+            sys.argv[1] = sys.argv[1]
             if not os.path.exists(sys.argv[1]):
                 print('unknown command or nonexistent file "' + sys.argv[1] + '"')
                 sys.exit(1)
 
             if findDir:
                 drt = getHomeDirFromFile(sys.argv[1])
-                compiler.preConsts["HOME_DIR"] = f'"{drt}"'
-                top = 'new dynamic HOME_DIR="' + drt + '";'
+                compiler.preConsts["HOME_DIR"] = f'r"{drt}"'
+                top = 'new dynamic HOME_DIR=r"' + drt + '";'
 
             result = compiler.compileFile(sys.argv[1], top)
             if not compiler.hadError: 
