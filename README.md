@@ -31,6 +31,8 @@ NOTE: due to how the compiler works, it might not detect some syntax errors, esp
 	- Specifies that a program cannot be compiled with the `--static` flag. It's not meant to be used via terminal.
 - `--nocompile`
 	- Specifies that a program cannot be compiled. Useful for programs that use Python features that are not included in Cython. It's not meant to be used via terminal.
+- `--require`
+	- Specifies a minimum version of opal that the program requires to run. It's not meant to be used via terminal.
 - `--compile-only`
 	- Specifies that a program can only be compiled. Useful for programs that use Cython instructions or features. It's not meant to be used via terminal.
 - `--module`
@@ -504,11 +506,6 @@ Includes every `.py` and `.opal` file in a given directory. Expects a `str` or p
 ```
 $includeDirectory os.path.join(HOME_DIR, "myFolder")
 ```
-### `$import`
-Includes a `.py`, `.opal` or `.pyx` file given the relative position from opal's directory or `HOME_DIR`. Can also import an entire directory.
-```
-$import "myFolder.myFile"
-```
 ### `$macro`
 Defines a macro. A macro is a basic function that gets called with no overhead, since its body is copy-pasted into calls. Avoid using this too often since it can quickly increase the result file size. The body of the macro is anything between the `$macro` statement and an `$end` statement. Macros can be defined with no arguments...
 ```
@@ -559,11 +556,11 @@ if a != b {
 ### `$args`
 Passes the compiler some default arguments. Supported arguments are:
 ```
---static, --nostatic, --nocompile, --compile-only, --type-mode
+--static, --nostatic, --nocompile, --compile-only, --type-mode, --require
 ```
 Example:
 ```
-$args ["--static", "--type-mode", "check"]
+$args ["--static", "--type-mode", "check", "--require", "2023.11.9"]
 ```
 ### `$cy`
 Creates Cython decorators if the compiler is transcompiling to Cython. Avoids errors when running a program in "Python mode". It uses the following syntax:
