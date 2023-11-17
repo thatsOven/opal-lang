@@ -460,6 +460,20 @@ new function add(a: int, b: int) int {
 	return a + b;
 }
 ```
+### `global`
+The `global` flag is used to declare an object in the global scope. 
+```
+new function aFunction() {
+	global: new int a = 2, b = 3;
+
+	global:
+	new function anotherFunction() {
+		# do something
+	}
+}
+
+# a, b, and anotherFunction will be visible here with a "use" statement
+```
 ### Python equivalents
 Some statements are direct equivalents of Python statements or functions. Here's a list of opal statements that haven't been mentioned yet and their Python equivalents:
 ```
@@ -523,6 +537,22 @@ Macros are called using the `$call` statement:
 ```
 $call sayHi
 $call add(2, 4)
+```
+### `$comptime`
+Defines a block of code (all the way until an `$end` statement) that will run during compilation. If an exception is thrown during this stage, the compiler will throw an error. In combination with the `$export` and `$exportBlock` statements, it can be used for conditional code generation. Example:
+```
+$define USE_CUPY False
+
+$comptime
+	if USE_CUPY {
+		$export import cupy as numpy;
+	} else {
+		$exportBlock
+			import numpy;
+			?"running with numpy";
+		$end
+	}
+$end
 ```
 ### `$nocompile`
 Tells the precompiler to directly transcribe code to the result until a `$restore` statement. In practice, it allows to use Python or Cython code inside opal. Code in `$nocompile`-`$restore` blocks should be put on a "null indentation", for example:

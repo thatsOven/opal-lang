@@ -25,10 +25,10 @@ SOFTWARE.
 from components.utils  import *
 from components.Tokens import *
 from importlib         import import_module
-from pathlib           import Path
+from traceback         import format_exception
 import os
 
-VERSION = (2023, 9, 11)
+VERSION = (2023, 11, 12)
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
     "short", "int", "long", "long long", "float", "bint",
@@ -47,6 +47,9 @@ CYTHON_TO_PY_TYPES = {
     "void": "None",
     "bint": "bool"
 }
+
+def encode(text):
+    return "".join(map(lambda c: rf"\u{ord(c):04x}", text))
 
 def getArgsString(internalVars):
     argsList = []
@@ -238,6 +241,10 @@ class Compiler:
                 else:
                     self.out += (" " * tabs) + translates + " " + name.tok + f"({argsString})->{retType}:pass\n"
 
+                if self.nextGlobal:
+                    self.nextGlobal = False
+                    self.out += (" " * tabs) + f"globals()['{name.tok}']={name.tok}\n"
+
                 return loop, objNames
             
             if isRecord:
@@ -271,6 +278,10 @@ class Compiler:
                         self.out += (" " * (tabs + 2)) + f"this.{var[0]}={var[0]}\n"
                     else:
                         self.out += (" " * (tabs + 2)) + f"this.{var[0]}:{var[1]}={var[0]}\n"
+
+                if self.nextGlobal:
+                    self.nextGlobal = False
+                    self.out += (" " * tabs) + f"globals()['{name.tok}']={name.tok}\n"
 
                 return loop, objNames
             
@@ -373,6 +384,11 @@ class Compiler:
         block = self.getSameLevelParenthesis("{", "}", tokens)
         if len(block) == 0:
             self.out += "pass\n"
+
+            if self.nextGlobal:
+                self.nextGlobal = False
+                self.out += (" " * tabs) + f"globals()['{name.tok}']={name.tok}\n"
+
             return loop, objNames
         
         self.out += "\n"
@@ -381,6 +397,9 @@ class Compiler:
         
         if translates == "class":
             self.__nameStack.push((name.tok, "class"))
+
+            glob = self.nextGlobal
+            self.nextGlobal = False
 
             if self.nextStatic:
                 self.nextStatic = False
@@ -393,6 +412,10 @@ class Compiler:
                 self.__compiler(block, tabs + 1, loop, objNames)
 
             self.__nameStack.pop()
+
+            if glob:
+                self.out += (" " * tabs) + f"globals()['{name.tok}']={name.tok}\n"
+
             return loop, objNames
 
         intObjs = objNames.copy()
@@ -403,6 +426,9 @@ class Compiler:
             self.__nameStack.push((name.tok, "cfn"))
         else:
             self.__nameStack.push((name.tok, "fn", retType))
+
+        glob = self.nextGlobal
+        self.nextGlobal = False
 
         if self.nextStatic:
             self.nextStatic = False
@@ -415,6 +441,10 @@ class Compiler:
             self.__compiler(block, tabs + 1, loop, intObjs)
 
         self.__nameStack.pop()
+
+        if glob:
+            self.out += (" " * tabs) + f"globals()['{name.tok}']={name.tok}\n"
+
         return loop, objNames
     
     def __newVar(self, tokens : Tokens, tabs, loop, objNames):
@@ -430,7 +460,7 @@ class Compiler:
         if (
             self.__cy and (self.nextStatic or self.static) and
             self.__nameStack.lookforBeforeFn("class") and 
-            not self.nextUnchecked
+            (not self.nextUnchecked) and (not self.nextGlobal)
         ):
             if type_ in CYTHON_TYPES:
                 if loop is not None:
@@ -452,6 +482,11 @@ class Compiler:
             if type_ in ("auto", "dynamic"):
                 self.__error('"unchecked" flag is not effective on "auto" and "dynamic" typing', typeTok)
         else: unchecked = False
+
+        if self.nextGlobal:
+            self.nextGlobal = False
+            glob = True
+        else: glob = False
 
         if self.nextInline:
             self.nextInline = False
@@ -489,9 +524,15 @@ class Compiler:
                     self.out += (" " * tabs) + "cdef " + type_ + " " + name.tok + "=" + value + "\n"
                 else:
                     if unchecked or type_ in ("auto", "dynamic") or self.typeMode == "none":
-                        self.out += (" " * tabs) + name.tok + "=" + value + "\n"
+                        if glob:
+                            self.out += (" " * tabs) + f"globals()['{name.tok}']=" + value + "\n"
+                        else:
+                            self.out += (" " * tabs) + name.tok + "=" + value + "\n"
                     else:
-                        self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_CHECK_TYPE_({value},{type_})\n"
+                        if glob:
+                            self.out += (" " * tabs) + f"globals()['{name.tok}']=_OPAL_CHECK_TYPE_({value},{type_})\n"
+                        else:
+                            self.out += (" " * tabs) + name.tok + f":{type_}=_OPAL_CHECK_TYPE_({value},{type_})\n"
             elif next.tok == ",": 
                 if (not unchecked) and type_ not in ("dynamic", "auto"):
                     if cyType:
@@ -534,6 +575,10 @@ class Compiler:
         if self.nextCdef:
             self.nextCdef = False
             self.__error('$cdef is not effective on inline boolean inversions', last)
+
+        if self.nextGlobal:
+            self.nextGlobal = False
+            self.__error('"global" flag is not effective on inline boolean inversions', last)
     
         self.out += (" " * tabs) + Tokens(var + [Token("="), Token("not")] + var).join() + "\n"
 
@@ -542,7 +587,6 @@ class Compiler:
     def __asyncGen(self, keyw):
         def fn(tokens : Tokens, tabs, loop, objNames):
             self.out += (" " * tabs) + keyw + " "
-
             return loop, objNames
         
         return fn
@@ -567,6 +611,10 @@ class Compiler:
         if self.nextCdef:
             self.nextCdef = False
             self.__error(f'$cdef is not effective on "{statement}" statement', tok)
+
+        if self.nextGlobal:
+            self.nextGlobal = False
+            self.__error(f'"global" flag is not effective on "{statement}" statement', tok)
     
     def __quit(self, tokens : Tokens, tabs, loop, objNames):
         self.__flagsError("quit", tokens.last())
@@ -607,6 +655,10 @@ class Compiler:
         if self.nextCdef:
             self.nextCdef = False
             self.__error('$cdef is not effective on "return" statement', kw)
+
+        if self.nextGlobal:
+            self.nextGlobal = False
+            self.__error('"global" flag is not effective on "return" statement', kw)
 
         next = tokens.peek()
         if next.tok == ";":
@@ -705,7 +757,7 @@ class Compiler:
 
         return loop, objNames
     
-    def __static(self, tokens : Tokens, tabs, loop, objNames):
+    def __static(self, tokens: Tokens, tabs, loop, objNames):
         if self.nextStatic:
             self.__error('"static" flag was used twice. remove this flag', tokens.last())
 
@@ -729,7 +781,19 @@ class Compiler:
 
         return loop, objNames
     
-    def __inline(self, tokens : Tokens, tabs, loop, objNames):
+    def __global(self, tokens: Tokens, tabs, loop, objNames):
+        next = tokens.peek()
+        if next.tok == ":":
+            if self.nextGlobal:
+                self.__error('"global" flag was used twice. remove this flag', tokens.last())
+
+            tokens.next()
+            self.nextGlobal = True
+            return loop, objNames
+        
+        return self.__untilEnd("global")(tokens, tabs, loop, objNames)
+    
+    def __inline(self, tokens: Tokens, tabs, loop, objNames):
         if self.nextInline:
             self.__error('"inline" flag was used twice. remove this flag', tokens.last())
 
@@ -1003,6 +1067,10 @@ class Compiler:
         else:
             self.__block("class", content = [next, Token("(OpalNamespace)")], push = (next.tok, "class"))(tokens, tabs, loop, objNames)
 
+        if self.nextGlobal:
+            self.nextGlobal = False
+            self.out += (" " * tabs) + f"globals()['{next.tok}']={next.tok}\n"
+
         return loop, objNames
     
     def __do(self, tokens : Tokens, tabs, loop, objNames):
@@ -1046,6 +1114,10 @@ class Compiler:
         if self.nextInline:
             self.nextInline = False
             self.__error('"inline" flag is not effective on "repeat" statement', kw)
+
+        if self.nextGlobal:
+            self.nextGlobal = False
+            self.__error('"global" flag is not effective on "repeat" statement', kw)
 
         if self.nextCdef:
             self.nextCdef = False
@@ -1330,6 +1402,10 @@ class Compiler:
             self.nextInline = False
             self.__error(f'"inline" flag is not effective on "property" statement', kw)
 
+        if self.nextGlobal:
+            self.nextGlobal = False
+            self.__error(f'"global" flag is not effective on "property" statement', kw)
+
         if self.nextCdef:
             self.nextCdef = False
             self.__error('$cdef is not effective on "property" statement', kw)
@@ -1516,7 +1592,25 @@ class Compiler:
         return loop, objNames
     
     def __enum(self, tokens : Tokens, tabs, loop, objNames):
-        self.__flagsError("enum", tokens.last())
+        if self.nextUnchecked:
+            self.nextUnchecked = False
+            self.__error(f'"unchecked" flag is not effective on "enum" statement', tokens.last())
+
+        if self.nextStatic:
+            self.nextStatic = False
+            self.__error(f'"static" flag is not effective on "enum" statement', tokens.last())
+
+        if self.nextAbstract:
+            self.nextAbstract = False
+            self.__error(f'"abstract" flag is not effective on "enum" statement', tokens.last())
+
+        if self.nextInline:
+            self.nextInline = False
+            self.__error(f'"inline" flag is not effective on "enum" statement', tokens.last())
+
+        if self.nextCdef:
+            self.nextCdef = False
+            self.__error(f'$cdef is not effective on "enum" statement', tokens.last())
 
         _, value = self.getUntilNotInExpr("{", tokens, True, advance = False)
         block = self.getSameLevelParenthesis("{", "}", tokens)
@@ -1548,6 +1642,10 @@ class Compiler:
 
         objs, assignments = self.__handleAssignmentChain(inTabs, objNames, block, False)
         self.out += (" " * inTabs) + Tokens(objs).join() + f"=range({str(len([x for x in objs if x.tok != ',']))})\n" + assignments
+
+        if self.nextGlobal:
+            self.nextGlobal = False
+            self.out += (" " * tabs) + f"globals()['{value[0].tok}']={value[0].tok}\n"
         
         return loop, objNames
     
@@ -1625,8 +1723,8 @@ class Compiler:
             "del":                 self.__untilEnd("del"),
             "assert":              self.__untilEnd("assert"),
             "yield":               self.__untilEnd("yield"),
-            "global":              self.__untilEnd("global"),
             "external":            self.__untilEnd("nonlocal"),
+            "global":              self.__global,
             "_OPAL_PRINT_RETURN_": self.__printReturn,
             "not":                 self.__not,
             "++":                  self.__incDec("+"),
@@ -1650,6 +1748,10 @@ class Compiler:
             "static":              self.__static,
             "inline":              self.__inline
         }
+
+    def initMain(self):
+        self.comptimeCompiler = Compiler()
+        return self
 
     def __lineWarn(self, msg, line):
         print(f"warning (line {str(line + 1)}):", msg)
@@ -1996,6 +2098,8 @@ class Compiler:
     def __preCompiler(self, source):
         result = ""
         savingMacro = None
+        compTime = None
+        export = None
         inPy = False
 
         for i, line in enumerate(source.split("\n")):
@@ -2012,11 +2116,17 @@ class Compiler:
                     tabs = len(line) - len(strippedLine)
                     line = f"__OPALSIG[EMBED_INFER]({tabs})." + strippedLine.rstrip() + ";\n"
 
-                if savingMacro is None:
+                if savingMacro is None and compTime is None and export is None:
                     result += line + "\n"
                 else:
                     result += "\n" 
-                    savingMacro.add(line + "\n")
+
+                    if savingMacro is not None:
+                        savingMacro.add(line + "\n")
+                    elif export is not None:
+                        export += line + "\n"
+                    else:
+                        compTime += line + "\n"
 
                 continue
 
@@ -2057,7 +2167,7 @@ class Compiler:
                     self.preConsts[name] = content
                 case "macro":
                     if savingMacro is not None:
-                        self.__lineWarn("precompiler instruction (macro) found inside macro definition. ignoring line", i)
+                        self.__lineErr("found recursive macro definition", i)
                         continue
 
                     name = tokenizedLine.next().tok
@@ -2072,16 +2182,65 @@ class Compiler:
                             continue
             
                     savingMacro = Macro(name)
-                case "end":
-                    if savingMacro is None:
-                        self.__lineWarn("end of macro found with no macro definition. ignoring line", i)
+                case "comptime":
+                    if compTime is not None:
+                        self.__lineErr("cannot use comptime block inside another comptime block", i)
                         continue
 
-                    if savingMacro.code == "":
-                        self.__lineWarn(f'the "{savingMacro.name}" macro is being saved as empty', i)
+                    compTime = ""
+                case "export":
+                    if compTime is None:
+                        self.__lineErr("cannot use $export outside of a comptime block", i)
+                        continue
+
+                    compTime += 'return "' + encode(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()) + '";\n'
+                case "exportBlock":
+                    if compTime is None:
+                        self.__lineErr("cannot use $exportBlock outside of a comptime block", i)
+                        continue
+
+                    export = ""
+                case "end":
+                    if savingMacro is None and compTime is None and export is None:
+                        self.__lineErr("$end found with no macro definition, comptime block or export block", i)
+                        continue
+
+                    if savingMacro is not None:
+                        if savingMacro.code == "":
+                            self.__lineWarn(f'the "{savingMacro.name}" macro is being saved as empty', i)
+                            
+                        self.macros[savingMacro.name] = savingMacro
+                        savingMacro = None        
+                    elif export is not None:
+                        if export == "":
+                            self.__lineWarn("empty export block", i)
+                            continue
+
+                        compTime += 'return "' + encode(self.replaceConsts(export.strip(), self.preConsts | self.consts)) + '";\n'
+                        export = None
+                    else:
+                        if compTime == "":
+                            self.__lineWarn("empty comptime block", i)
+                            continue
                         
-                    self.macros[savingMacro.name] = savingMacro
-                    savingMacro = None
+                        res = self.comptimeCompiler.compile(
+                            "global:new function _OPAL_COMPTIME_BLOCK_(){\n" + 
+                            self.replaceConsts(compTime.strip(), self.preConsts | self.consts) + 
+                            "}\n", precomp = False
+                        )
+                        compTime = None
+                        if res == "":
+                            self.hadError = True
+                            continue
+
+                        try:
+                            exec(res)
+                            export = eval("_OPAL_COMPTIME_BLOCK_()")
+                        except Exception as e:
+                            self.__lineErr("comptime block threw an exception:\n" + ''.join(format_exception(e)), i)
+                        else:
+                            if export is not None:
+                                result += str(export) + "\n" 
                 case "call":
                     name = tokenizedLine.next().tok
 
@@ -2151,7 +2310,7 @@ class Compiler:
                     else:
                         savingMacro.add("__OPALSIG[CDEF]()\n")
                 case _:
-                    self.__lineWarn("unknown or incomplete precompiler instruction. ignoring line", i)
+                    self.__lineErr("unknown or incomplete precompiler instruction", i)
 
         return self.replaceConsts(result, self.consts)
     
@@ -2169,11 +2328,12 @@ class Compiler:
         self.nextStatic    = False
         self.nextInline    = False
         self.nextCdef      = False
+        self.nextGlobal    = False
         self.lastPackage   = ""
 
         self.__resetFlags()
 
-    def compile(self, section, top = None):
+    def compile(self, section, top = None, precomp = True):
         self.reset()
 
         if top is not None:
@@ -2190,7 +2350,8 @@ class Compiler:
         if len(self.__nameStack.array) == 0:
             self.__nameStack.push(("<main>", "file"))
 
-        self.tokens = Tokens(self.__preCompiler(section))
+        if precomp: section = self.__preCompiler(section)
+        self.tokens = Tokens(section)
 
         if self.__cy:
             if self.noCompile:

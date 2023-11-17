@@ -82,7 +82,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         print(f"opal compiler v{'.'.join([str(x) for x in VERSION])} - thatsOven")
     else:
-        compiler = Compiler()
+        compiler = Compiler().initMain()
         compiler.handleArgs(sys.argv)
 
         if "--debug" in sys.argv:
