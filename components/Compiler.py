@@ -2222,7 +2222,7 @@ class Compiler:
                         if compTime == "":
                             self.__lineWarn("empty comptime block", i)
                             continue
-                        
+
                         res = self.comptimeCompiler.compile(
                             "global:new function _OPAL_COMPTIME_BLOCK_(){\n" + 
                             self.replaceConsts(compTime.strip(), self.preConsts | self.consts) + 
@@ -2235,12 +2235,12 @@ class Compiler:
 
                         try:
                             exec(res)
-                            export = eval("_OPAL_COMPTIME_BLOCK_()")
+                            exportCode = eval("_OPAL_COMPTIME_BLOCK_()")
                         except Exception as e:
                             self.__lineErr("comptime block threw an exception:\n" + ''.join(format_exception(e)), i)
                         else:
-                            if export is not None:
-                                result += str(export) + "\n" 
+                            if exportCode is not None:
+                                result += str(exportCode) + "\n" 
                 case "call":
                     name = tokenizedLine.next().tok
 
