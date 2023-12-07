@@ -28,7 +28,7 @@ from importlib         import import_module
 from traceback         import format_exception
 import os
 
-VERSION = (2023, 11, 12)
+VERSION = (2023, 12, 7)
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
     "short", "int", "long", "long long", "float", "bint",
