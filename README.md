@@ -6,10 +6,12 @@ opal is a transcompiled programming language based on Python and Cython.
 NOTE: due to how the compiler works, it might not detect some syntax errors, especially in expressions.
 # Compiler usage
 [ ] = optional
-* To compile to a Python `.py` file: `opalc.py pycompile input_file [output_file]`
-* To compile to a Cython `.pyx` file: `opalc.py pyxcompile input_file [output_file]`
-* To compile: `opalc.py compile input_file [output_file]`
-* To directly run opal source: `opalc.py file_name`
+* To compile to a Python `.py` file: `opal pycompile input_file [output_file]`
+* To compile to a Cython `.pyx` file: `opal pyxcompile input_file [output_file]`
+* To compile to a Cython module: `opal compile input_file [output_file]`
+* To compile to an executable: `opal release build_file` (note that this requires an internet connection to fetch and install dependencies to the target)
+	An opal build file is structured like a [ianthe project file](https://github.com/thatsOven/ianthe)
+* To directly run opal source: `opal file_name`
 # Command line arguments
 - `--type-mode`
 	- Selects a default typing mode for the file. Options are:

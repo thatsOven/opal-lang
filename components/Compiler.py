@@ -855,6 +855,8 @@ class Compiler:
                 self.__error('cannot use "import *" if no package is defined', keyw)
                 return loop, objNames
             
+            self.imports.append(self.lastPackage)
+            
             modl = import_module(self.lastPackage)
             for name in dir(modl):
                 if callable(getattr(modl, name)):
@@ -872,6 +874,8 @@ class Compiler:
             if next == "": break
 
             name = next
+            if self.lastPackage == "": self.imports.append(name.tok)
+
             next, nameBuf = self.getUntilNotInExpr(("as", ","), imports, True, False, False)
             if next != "" and next.tok in ("as", ","): imports.pos -= 1
             if len(nameBuf) != 0: 
@@ -897,7 +901,9 @@ class Compiler:
             if next.tok != ",":
                 self.__error("invalid syntax: modules should be separated by commas", next)
 
-        self.lastPackage = ""
+        if self.lastPackage != "": 
+            self.imports.append(self.lastPackage)
+            self.lastPackage = ""
 
         self.out += (" " * tabs) + "import " + imports.join() + "\n"
 
@@ -2318,6 +2324,7 @@ class Compiler:
         self.macros    = {}
         self.consts    = {}
         self.autoTypes = {}
+        self.imports   = []
 
         self.out      = ""
         self.hadError = False
