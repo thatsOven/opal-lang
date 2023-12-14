@@ -30,7 +30,9 @@ from Cython.Build        import cythonize
 from Cython.Compiler     import Options
 from components.Compiler import *
 
-RELEASE_COLLECT = ["__future__", "typeguard", "pygame", "unittest"]
+RELEASE_COLLECT = ["__future__", "typeguard", "pygame", "unittest", "numpy", "json"]
+PY_STDLIB       = set(sys.stdlib_module_names)
+NO_INSTALL      = {"opal"} | set(RELEASE_COLLECT) | PY_STDLIB
 
 def build(file, debug = False):
     Options.annotate = debug
@@ -245,11 +247,19 @@ if __name__ == "__main__":
                         os.path.abspath("libs"): "folder"
                     }
 
+                if "hidden-imports" in ianthe.config:
+                      ianthe.config["hidden-imports"] = list(set(ianthe.config["hidden-imports"]) | PY_STDLIB)
+                else: ianthe.config["hidden-imports"] = list(PY_STDLIB)
+
+                if "keep" in ianthe.config:
+                      ianthe.config["keep"] = list(set(ianthe.config["keep"]) | PY_STDLIB)
+                else: ianthe.config["keep"] = list(PY_STDLIB)
+
                 if "collect" in ianthe.config:
                     if "all" in ianthe.config["collect"]:
-                          ianthe.config["collect"]["all"] = list(set(ianthe.config["collect"]["all"] + RELEASE_COLLECT))
-                    else: ianthe.config["collect"]["all"] = RELEASE_COLLECT
-                else:     ianthe.config["collect"] = {"all": RELEASE_COLLECT}
+                          ianthe.config["collect"]["all"]  = list(set(ianthe.config["collect"]["all"] + RELEASE_COLLECT) | PY_STDLIB)
+                    else: ianthe.config["collect"]["all"]  = list(set(RELEASE_COLLECT) | PY_STDLIB)
+                else:     ianthe.config["collect"] = {"all": list(set(RELEASE_COLLECT) | PY_STDLIB)}
 
                 if "icon" not in ianthe.config:
                     ianthe.config["icon"] = str(os.path.join(curr, "runner", "icon.ico"))
@@ -258,7 +268,7 @@ if __name__ == "__main__":
                 ianthe.execute()
 
                 for module in compiler.imports:
-                    if module not in ["opal"] + RELEASE_COLLECT: subprocess.run([
+                    if module not in NO_INSTALL: subprocess.run([
                         sys.executable, "-m", "pip", "install", "--isolated", "--exists-action", "w", 
                         f"--target={str(os.path.join(dst, name))}", module, 
                     ])

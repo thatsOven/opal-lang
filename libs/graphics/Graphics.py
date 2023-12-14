@@ -24,7 +24,7 @@ SOFTWARE.
 
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
-import pygame, numpy
+import pygame, numpy, sys
 from libs.sort   import sort
 from libs.Vector import Vector
 from pathlib     import Path
@@ -156,9 +156,7 @@ class Graphics:
             self.drawLoop = draw
 
         if handleQuit:
-            def handle(ev):
-                quit()
-            self.eventActions[pygame.QUIT] = handle
+            self.eventActions[pygame.QUIT] = lambda _: sys.exit(0)
 
         while True:
             if self.framerate is not None:
@@ -221,9 +219,7 @@ class Graphics:
 
     def forceDraw(self, handleQuit = True, drawBackground = True):
         if handleQuit:
-            def handle(ev):
-                quit()
-            self.eventActions[pygame.QUIT] = handle
+            self.eventActions[pygame.QUIT] = lambda _: sys.exit(0)
 
         self.updateEvents()
 

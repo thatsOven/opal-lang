@@ -483,7 +483,6 @@ Some statements are direct equivalents of Python statements or functions. Here's
 async    | async
 await    | await
 with     | with
-quit     | quit()
 super    | super()
 del      | del
 assert   | assert

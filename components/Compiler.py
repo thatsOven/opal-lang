@@ -616,18 +616,6 @@ class Compiler:
             self.nextGlobal = False
             self.__error(f'"global" flag is not effective on "{statement}" statement', tok)
     
-    def __quit(self, tokens : Tokens, tabs, loop, objNames):
-        self.__flagsError("quit", tokens.last())
-
-        next = tokens.peek()
-        if next.tok != ";":
-            self.__error('expecting ";" after "quit"', next)
-        else: tokens.next()
-
-        self.out += (" " * tabs) + "quit()\n"
-
-        return loop, objNames
-    
     def __return(self, tokens : Tokens, tabs, loop, objNames):
         kw = tokens.last()
 
@@ -855,7 +843,9 @@ class Compiler:
                 self.__error('cannot use "import *" if no package is defined', keyw)
                 return loop, objNames
             
-            self.imports.append(self.lastPackage)
+            if "." in self.lastPackage:
+                  self.imports.append(self.lastPackage.split(".")[0])
+            else: self.imports.append(self.lastPackage)
             
             modl = import_module(self.lastPackage)
             for name in dir(modl):
@@ -902,7 +892,10 @@ class Compiler:
                 self.__error("invalid syntax: modules should be separated by commas", next)
 
         if self.lastPackage != "": 
-            self.imports.append(self.lastPackage)
+            if "." in self.lastPackage:
+                  self.imports.append(self.lastPackage.split(".")[0])
+            else: self.imports.append(self.lastPackage)
+
             self.lastPackage = ""
 
         self.out += (" " * tabs) + "import " + imports.join() + "\n"
@@ -1719,7 +1712,6 @@ class Compiler:
             "await":               self.__asyncGen("await"),
             "use":                 self.__use,
             "unchecked":           self.__unchecked,
-            "quit":                self.__quit,
             "return":              self.__return,
             "break":               self.__break,
             "continue":            self.__continue,
@@ -2374,6 +2366,7 @@ class Compiler:
             self.out += "from libs._internals import _OPAL_PRINT_RETURN_\n"
 
         self.__compiler(self.tokens, 0, None, {})
+        self.imports = list(set(self.imports))
 
         if self.flags["mainfn"]:
             if self.__cy:
