@@ -94,7 +94,7 @@ def compileOne(libs, file, compiler):
     compiler.preConsts["HOME_DIR"] = f'r"{libs}"'
     top = 'new dynamic HOME_DIR=r"' + libs + '";'
 
-    return compileBase(filename, name, top, time)
+    return compileBase(compiler, filename, name, top, time)
 
 def getHomeDirFromFile(file):
     return str(Path(file).parent.absolute())
