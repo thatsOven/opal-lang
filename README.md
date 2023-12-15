@@ -9,8 +9,7 @@ NOTE: due to how the compiler works, it might not detect some syntax errors, esp
 * To compile to a Python `.py` file: `opal pycompile input_file [output_file]`
 * To compile to a Cython `.pyx` file: `opal pyxcompile input_file [output_file]`
 * To compile to a Cython module: `opal compile input_file [output_file]`
-* To compile to an executable: `opal release build_file` or `opal pyrelease build_file` (for programs that don't support Cython compilation)
-	- (note that this requires an internet connection to fetch and install dependencies to the target). An opal build file is structured like a [ianthe project file](https://github.com/thatsOven/ianthe).
+* To compile to an executable: `opal release build_file` (note that this requires an internet connection to fetch and install dependencies to the target). An opal build file is structured like a [ianthe project file](https://github.com/thatsOven/ianthe);
 * To directly run opal source: `opal file_name`
 # Command line arguments
 - `--type-mode`
