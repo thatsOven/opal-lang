@@ -71,6 +71,13 @@ def compileBase(compiler, filename, name, top, time):
 
     return ok
 
+def compilePy(compiler, filename, _, endName, top, time, _0):
+    compiler.compileToPY(filename, f"{endName}.py", top)
+    if compiler.hadError: return None
+
+    print("opal -> Python: Done in " + str(round(default_timer() - time, 4)) + " seconds")
+    return f"{endName}.py"
+
 def compileNormal(compiler, fileInput, name, endName, top, time, noModule):
     if compileBase(compiler, fileInput, name, top, time):
         if os.path.exists("build"): shutil.rmtree("build")
@@ -98,6 +105,80 @@ def compileOne(libs, file, compiler):
 
 def getHomeDirFromFile(file):
     return str(Path(file).parent.absolute())
+
+def release(fn):
+    time = default_timer()
+
+    if findDir:
+        drt = getHomeDirFromFile(sys.argv[2])
+        compiler.preConsts["HOME_DIR"] = f'r"{drt}"'
+        top = 'package pathlib:import Path;new dynamic HOME_DIR=str(Path(__file__).parent.absolute());del Path;'
+
+    from ianthe import Ianthe
+    ianthe = Ianthe(sys.argv[2])
+    try:    _ = ianthe.config
+    except: quit()
+
+    name = os.path.basename(os.path.basename(ianthe.config["source"])).split(".")[0]
+    for char in ILLEGAL_CHARS:
+        name = name.replace(char, "_")
+
+    ianthe.config["source"] = os.path.abspath(ianthe.config["source"])
+
+    if "destination" in ianthe.config:
+          ianthe.config["destination"] = os.path.abspath(ianthe.config["destination"])
+    else: ianthe.config["destination"] = getHomeDirFromFile(ianthe.config["source"])
+    dst = ianthe.config["destination"]
+
+    curr = getHomeDirFromFile(__file__)
+    os.chdir(curr)
+    before = set(os.listdir(curr))
+
+    filename = fn(compiler, ianthe.config["source"], "opal_program", name, top, time, True, compileBase)
+    if filename is not None:
+        if "copy" in ianthe.config:
+            ianthe.config["copy"][os.path.abspath("opal.py")] = "file"
+            ianthe.config["copy"][os.path.abspath("libs")] = "folder"
+        else:
+            ianthe.config["copy"] = {
+                os.path.abspath("opal.py"): "file",
+                os.path.abspath("libs"): "folder"
+            }
+
+        if "hidden-imports" in ianthe.config:
+              ianthe.config["hidden-imports"] = list(set(ianthe.config["hidden-imports"]) | PY_STDLIB)
+        else: ianthe.config["hidden-imports"] = list(PY_STDLIB)
+
+        if "keep" in ianthe.config:
+              ianthe.config["keep"] = list(set(ianthe.config["keep"]) | PY_STDLIB)
+        else: ianthe.config["keep"] = list(PY_STDLIB)
+
+        if "collect" in ianthe.config:
+            if "all" in ianthe.config["collect"]:
+                  ianthe.config["collect"]["all"]  = list(set(ianthe.config["collect"]["all"] + RELEASE_COLLECT) | PY_STDLIB)
+            else: ianthe.config["collect"]["all"]  = list(set(RELEASE_COLLECT) | PY_STDLIB)
+        else:     ianthe.config["collect"] = {"all": list(set(RELEASE_COLLECT) | PY_STDLIB)}
+
+        if "icon" not in ianthe.config:
+            ianthe.config["icon"] = str(os.path.join(curr, "runner", "icon.ico"))
+
+        ianthe.config["source"] = os.path.abspath(filename)
+        ianthe.execute()
+
+        for module in compiler.imports:
+            if module not in NO_INSTALL: subprocess.run([
+                sys.executable, "-m", "pip", "install", "--isolated", "--exists-action", "w", 
+                f"--target={str(os.path.join(dst, name))}", module, 
+            ])
+
+        os.chdir(curr) 
+        for file in set(os.listdir(curr)) - before: 
+            os.chmod(file, 0o777)
+            os.remove(file)
+
+        print("Compilation finished. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
+        quit()
+    print("Compilation failed.")
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
@@ -178,7 +259,7 @@ if __name__ == "__main__":
             for char in ILLEGAL_CHARS:
                 name = name.replace(char, "_")
 
-            if compileNormal(compiler, sys.argv[2], name, name, top, time, False):
+            if compileNormal(compiler, sys.argv[2], name, name, top, time, False, compileBase):
                 print("Compilation was successful. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
                 quit()
             print("Compilation failed")
@@ -209,78 +290,13 @@ if __name__ == "__main__":
                 print('input file required for command "release"')
                 sys.exit(1)
 
-            time = default_timer()
+            release(compileNormal)
+        elif sys.argv[1] == "pyrelease":
+            if len(sys.argv) == 2:
+                print('input file required for command "pyrelease"')
+                sys.exit(1)
 
-            if findDir:
-                drt = getHomeDirFromFile(sys.argv[2])
-                compiler.preConsts["HOME_DIR"] = f'r"{drt}"'
-                top = 'package pathlib:import Path;new dynamic HOME_DIR=str(Path(__file__).parent.absolute());del Path;'
-
-            from ianthe import Ianthe
-            ianthe = Ianthe(sys.argv[2])
-            try:    _ = ianthe.config
-            except: quit()
-
-            name = os.path.basename(os.path.basename(ianthe.config["source"])).split(".")[0]
-            for char in ILLEGAL_CHARS:
-                name = name.replace(char, "_")
-
-            ianthe.config["source"] = os.path.abspath(ianthe.config["source"])
-
-            if "destination" in ianthe.config:
-                  ianthe.config["destination"] = os.path.abspath(ianthe.config["destination"])
-            else: ianthe.config["destination"] = getHomeDirFromFile(ianthe.config["source"])
-            dst = ianthe.config["destination"]
-
-            curr = getHomeDirFromFile(__file__)
-            os.chdir(curr)
-            before = set(os.listdir(curr))
-
-            filename = compileNormal(compiler, ianthe.config["source"], "opal_program", name, top, time, True)
-            if filename is not None:
-                if "copy" in ianthe.config:
-                    ianthe.config["copy"][os.path.abspath("opal.py")] = "file"
-                    ianthe.config["copy"][os.path.abspath("libs")] = "folder"
-                else:
-                    ianthe.config["copy"] = {
-                        os.path.abspath("opal.py"): "file",
-                        os.path.abspath("libs"): "folder"
-                    }
-
-                if "hidden-imports" in ianthe.config:
-                      ianthe.config["hidden-imports"] = list(set(ianthe.config["hidden-imports"]) | PY_STDLIB)
-                else: ianthe.config["hidden-imports"] = list(PY_STDLIB)
-
-                if "keep" in ianthe.config:
-                      ianthe.config["keep"] = list(set(ianthe.config["keep"]) | PY_STDLIB)
-                else: ianthe.config["keep"] = list(PY_STDLIB)
-
-                if "collect" in ianthe.config:
-                    if "all" in ianthe.config["collect"]:
-                          ianthe.config["collect"]["all"]  = list(set(ianthe.config["collect"]["all"] + RELEASE_COLLECT) | PY_STDLIB)
-                    else: ianthe.config["collect"]["all"]  = list(set(RELEASE_COLLECT) | PY_STDLIB)
-                else:     ianthe.config["collect"] = {"all": list(set(RELEASE_COLLECT) | PY_STDLIB)}
-
-                if "icon" not in ianthe.config:
-                    ianthe.config["icon"] = str(os.path.join(curr, "runner", "icon.ico"))
-
-                ianthe.config["source"] = os.path.abspath(filename)
-                ianthe.execute()
-
-                for module in compiler.imports:
-                    if module not in NO_INSTALL: subprocess.run([
-                        sys.executable, "-m", "pip", "install", "--isolated", "--exists-action", "w", 
-                        f"--target={str(os.path.join(dst, name))}", module, 
-                    ])
-
-                os.chdir(curr) 
-                for file in set(os.listdir(curr)) - before: 
-                    os.chmod(file, 0o777)
-                    os.remove(file)
-
-                print("Compilation finished. Elapsed time: " + str(round(default_timer() - time, 4)) + " seconds")
-                quit()
-            print("Compilation failed.")
+            release(compilePy)
         else:
             sys.argv[1] = sys.argv[1]
             if not os.path.exists(sys.argv[1]):
