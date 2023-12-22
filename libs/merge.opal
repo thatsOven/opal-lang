@@ -102,22 +102,59 @@ new function insertToRight(array: object, from_: int, to: int) void {
 
 $cdef
 $cy wraparound False
-inline:
-new function rotate(array: object, a: int, m: int, b: int) void {
-    while b - m > 1 && m - a > 1 {
-        if b - m < m - a {
-            multiSwapRight(array, a, m, b - m);
-            a += b - m;
+inline: new function arrayCopy(src: object, srcIdx: int, dst: object, dstIdx: int, len: int) void {
+    new int i;
+    
+    if src != dst || dstIdx < srcIdx {
+        for i in range(len) {
+            dst[dstIdx + i] = src[srcIdx + i];
+        }
+    } else {
+        for i = len - 1; i >= 0; i-- {
+            dst[dstIdx + i] = src[srcIdx + i];
+        }
+    }
+}
+
+$cdef
+$cy wraparound False
+inline: new function rotate(array: object, a: int, m: int, b: int, auxSize: int, aux: list) void {
+    new int rl = b - m,
+            ll = m - a,
+            min_ = 1 if auxSize == 0 else (
+                auxSize if min(auxSize, ll, rl) > 8 else 1
+            );
+
+    while ll > min_ and rl > min_ {
+        if rl < ll {
+            multiSwapRight(array, a, m, rl);
+            a  += rl;
+            ll -= rl;
         } else {
-            multiSwapLeft(array, a, b - (m - a), m - a);
-            b -= m - a;
+            b  -= ll;
+            rl -= ll;
+            multiSwapLeft(array, a, b, ll);
         }
     }
 
-    if b - m == 1 {
-        insertToLeft(array, m, a);
-    } elif m - a == 1 {
-        insertToRight(array, a, b - 1);
+    if min_ == 1 {
+        if rl == 1 {
+            insertToLeft(array, m, a);
+        } elif ll == 1 {
+            insertToRight(array, a, b - 1);
+        }
+            
+        return;
+    }
+        
+    if rl < ll {
+        arrayCopy(array, m, aux, 0, rl);
+        arrayCopy(array, a, array, b - ll, ll);
+        arrayCopy(aux, 0, array, a, rl);
+    } else {
+        arrayCopy(array, a, aux, 0, ll);
+        arrayCopy(array, m, array, a, rl);
+        arrayCopy(aux, 0, array, b - ll, ll);
     }
 }
 
