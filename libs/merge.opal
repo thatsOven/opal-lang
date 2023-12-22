@@ -226,7 +226,7 @@ new function mergeDown(array: object, a: int, m: int, b: int, aux: list) void {
 
 $cy wraparound False
 new function mergeInPlace(array: object, a: int, m: int, b: int, auxSize: int, aux: list, check: bint = True) void {
-    if checkBounds(array, a, m, b) {
+    if checkBounds(array, a, m, b, auxSize, aux) {
         return;
     }
 
