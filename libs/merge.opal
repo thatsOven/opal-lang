@@ -160,11 +160,11 @@ inline: new function rotate(array: object, a: int, m: int, b: int, auxSize: int,
 
 $cdef
 $cy wraparound False
-inline: new function checkBounds(array: object, a: int, m: int, b: int) bint {
+inline: new function checkBounds(array: object, a: int, m: int, b: int, auxSize: int, aux: list) bint {
     if array[m - 1] <= array[m] {
         return True;
     } elif array[a] > array[b - 1] {
-        rotate(array, a, m, b);
+        rotate(array, a, m, b, auxSize, aux);
         return True;
     }
     return False;
@@ -225,7 +225,7 @@ new function mergeDown(array: object, a: int, m: int, b: int, aux: list) void {
 }
 
 $cy wraparound False
-new function mergeInPlace(array: object, a: int, m: int, b: int, check: bint = True) void {
+new function mergeInPlace(array: object, a: int, m: int, b: int, auxSize: int, aux: list, check: bint = True) void {
     if checkBounds(array, a, m, b) {
         return;
     }
@@ -243,7 +243,7 @@ new function mergeInPlace(array: object, a: int, m: int, b: int, check: bint = T
         while i < j && j < b {
             if array[i] > array[j] {
                 k = lrBinarySearch(array, array[i], j, b, True);
-                rotate(array, i, j, k);
+                rotate(array, i, j, k, auxSize, aux);
                 i += k - j;
                 j = k;
             } else {
@@ -256,7 +256,7 @@ new function mergeInPlace(array: object, a: int, m: int, b: int, check: bint = T
         while j > i && i >= a {
             if array[i] > array[j] {
                 k = lrBinarySearch(array, array[j], a, i, False);
-                rotate(array, k, i + 1, j + 1);
+                rotate(array, k, i + 1, j + 1, auxSize, aux);
                 j -= i + 1 - k;
                 i = k - 1;
             } else {
@@ -272,7 +272,7 @@ $cy cdivision  True
 $cy wraparound False
 inline:
 new function _merge(array: object, a: int, m: int, b: int, check: bint, auxSize: int, aux: list) void {
-    if checkBounds(array, a, m, b) {
+    if checkBounds(array, a, m, b, auxSize, aux) {
         return;
     }
 
@@ -287,7 +287,7 @@ new function _merge(array: object, a: int, m: int, b: int, check: bint, auxSize:
         size = b - m;
 
         if size <= 8 {
-            mergeInPlace(array, a, m, b, False);
+            mergeInPlace(array, a, m, b, auxSize, aux, False);
         } elif size <= auxSize {
             mergeDown(array, a, m, b, aux);
         } else {
@@ -301,7 +301,7 @@ new function _merge(array: object, a: int, m: int, b: int, check: bint, auxSize:
     } else {
         size = m - a;
         if size <= 8 {
-            mergeInPlace(array, a, m, b, False);
+            mergeInPlace(array, a, m, b, auxSize, aux, False);
         } elif size <= auxSize {
             mergeUp(array, a, m, b, aux);
         } else {
@@ -317,7 +317,7 @@ new function _merge(array: object, a: int, m: int, b: int, check: bint, auxSize:
 $cdef
 $cy wraparound False
 new function rotateMerge(array: object, a: int, m: int, m1: int, m2: int, m3: int, b: int, auxSize: int, aux: list) void {
-    rotate(array, m1, m, m2);
+    rotate(array, m1, m, m2, auxSize, aux);
 
     if m1 - a > 0 && m3 - m1 > 0 {
         _merge(array, a, m1, m3, False, auxSize, aux);
