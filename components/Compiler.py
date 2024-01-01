@@ -2192,8 +2192,8 @@ class Compiler:
                     if compTime is None:
                         self.__lineErr("cannot use $export outside of a comptime block", i)
                         continue
-
-                    compTime += 'return "' + encode(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()) + '";\n'
+                    
+                    compTime += 'return "' + encode(self.replaceConsts(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join(), self.preConsts | self.consts | COMPTIME_EXPORT_VARS)) + '";\n'
                 case "exportBlock":
                     if compTime is None:
                         self.__lineErr("cannot use $exportBlock outside of a comptime block", i)
@@ -2216,7 +2216,7 @@ class Compiler:
                             self.__lineWarn("empty export block", i)
                             continue
 
-                        compTime += 'return "' + encode(self.replaceConsts(export.strip(), self.preConsts | self.consts)) + '";\n'
+                        compTime += 'return "' + encode(self.replaceConsts(export.strip(), self.preConsts | self.consts | COMPTIME_EXPORT_VARS)) + '";\n'
                         export = None
                     else:
                         if compTime == "":
@@ -2224,8 +2224,8 @@ class Compiler:
                             continue
 
                         res = self.comptimeCompiler.compile(
-                            "global:new function _OPAL_COMPTIME_BLOCK_(){\n" + 
-                            self.replaceConsts(compTime.strip(), self.preConsts | self.consts | COMPTIME_EXPORT_VARS) + 
+                            "global:new function _OPAL_COMPTIME_BLOCK_(){\nglobal COMPTIME_EXPORT_VARS;\n" + 
+                            self.replaceConsts(compTime.strip(), self.preConsts | self.consts) + 
                             "}\n", precomp = False
                         )
                         compTime = None
