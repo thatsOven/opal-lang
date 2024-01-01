@@ -554,6 +554,20 @@ $comptime
 	}
 $end
 ```
+
+The `COMPTIME_EXPORT_VARS` global dictionary can be used to create variables that can be read by export blocks. For example:
+```
+$define ADDING_WATER_DROPLETS True
+
+$comptime
+	if ADDING_WATER_DROPLETS {
+		$export new int ONE_PLUS_ONE = 1;
+	} else {
+		COMPTIME_EXPORT_VARS["onePlusOneResult"] = str(1 + 1);
+		$export new int ONE_PLUS_ONE = onePlusOneResult;
+	}
+$end
+```
 ### `$nocompile`
 Tells the precompiler to directly transcribe code to the result until a `$restore` statement. In practice, it allows to use Python or Cython code inside opal. Code in `$nocompile`-`$restore` blocks should be put on a "null indentation", for example:
 ```

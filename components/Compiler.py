@@ -28,7 +28,7 @@ from importlib         import import_module
 from traceback         import format_exception
 import os
 
-VERSION = (2023, 12, 17)
+VERSION = (2024, 1, 1)
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
     "short", "int", "long", "long long", "float", "bint",
@@ -47,6 +47,8 @@ CYTHON_TO_PY_TYPES = {
     "void": "None",
     "bint": "bool"
 }
+
+COMPTIME_EXPORT_VARS = {}
 
 def encode(text):
     return "".join(map(lambda c: rf"\u{ord(c):04x}", text))
@@ -2223,7 +2225,7 @@ class Compiler:
 
                         res = self.comptimeCompiler.compile(
                             "global:new function _OPAL_COMPTIME_BLOCK_(){\n" + 
-                            self.replaceConsts(compTime.strip(), self.preConsts | self.consts) + 
+                            self.replaceConsts(compTime.strip(), self.preConsts | self.consts | COMPTIME_EXPORT_VARS) + 
                             "}\n", precomp = False
                         )
                         compTime = None
@@ -2333,6 +2335,8 @@ class Compiler:
         self.__resetFlags()
 
     def compile(self, section, top = None, precomp = True):
+        global COMPTIME_EXPORT_VARS
+        COMPTIME_EXPORT_VARS = {}
         self.reset()
 
         if top is not None:
