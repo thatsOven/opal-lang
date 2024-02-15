@@ -22,32 +22,40 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+from collections import deque
+
 class Queue:
     def __init__(self):
-        self.__array = []
+        self.__q    = deque()
+        self.__list = None
 
     def push(self, val):
-        self.__array.append(val)
+        self.__q.append(val)
+        self.__list = None
 
     def pop(self):
-        if len(self.__array) == 0: return None
-        return self.__array.pop(0)
+        if len(self.__q) == 0: return None
+        self.__list = None
+        return self.__q.popleft()
 
     def look(self):
-        if len(self.__array) == 0: return None
-        return self.__array[0]
+        if len(self.__q) == 0: return None
+        return self.__q[0]
 
     def isEmpty(self):
-        return len(self.__array) == 0
+        return len(self.__q) == 0
 
     def toList(self):
-        return self.__array.copy()
+        if self.__list == None:
+            self.__list = list(self.__q)
+
+        return self.__list
 
     def __repr__(self):
-        return str(self.__array)
+        return str(self.toList())
 
     def __len__(self):
-        return len(self.__array)
+        return len(self.__q)
 
     def __str__(self):
-        return str(self.__array)
+        return str(self.toList())
