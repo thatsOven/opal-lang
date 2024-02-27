@@ -134,6 +134,8 @@ def release(fn):
     os.chdir(curr)
     before = set(os.listdir(curr))
 
+    compiler.preConsts["RELEASE_MODE"] = "True"
+
     filename = fn(compiler, ianthe.config["source"], "opal_program", name, top, time, True)
     if filename is not None:
         if "copy" in ianthe.config:
@@ -188,6 +190,7 @@ if __name__ == "__main__":
     else:
         compiler = Compiler().initMain()
         compiler.handleArgs(sys.argv)
+        compiler.preConsts["RELEASE_MODE"] = "False"
 
         if "--debug" in sys.argv:
             debug = True

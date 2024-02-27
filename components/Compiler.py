@@ -28,7 +28,7 @@ from importlib         import import_module
 from traceback         import format_exception
 import os
 
-VERSION = (2024, 1, 1)
+VERSION = (2024, 2, 27)
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
     "short", "int", "long", "long long", "float", "bint",
@@ -2142,14 +2142,24 @@ class Compiler:
                         
                     fileDir = self.getDir(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
                         
-                    result += f'__OPALSIG[PUSH_NAME]("{os.path.basename(fileDir)}","file")\n'
+                    tmp = f'__OPALSIG[PUSH_NAME]("{os.path.basename(fileDir)}","file")\n'
                     pyx = fileDir.endswith(".pyx")
                     if fileDir.endswith(".py") or pyx:
                         if pyx and not self.__cy: continue
-                        result += self.__readEmbed(fileDir)
+                        tmp += self.__readEmbed(fileDir)
                     else:
-                        result += self.__preCompiler(self.readFile(fileDir))
-                    result += "__OPALSIG[POP_NAME]()\n"
+                        tmp += self.__preCompiler(self.readFile(fileDir))
+                    tmp += "__OPALSIG[POP_NAME]()\n"
+
+                    if savingMacro is None and compTime is None and export is None:
+                        result += tmp
+                    else:
+                        if savingMacro is not None:
+                            savingMacro.add(tmp)
+                        elif export is not None:
+                            export += tmp
+                        else:
+                            compTime += tmp
                 case "includeDirectory":
                     fileDir = self.getDir(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
 
@@ -2353,8 +2363,9 @@ class Compiler:
         if len(self.__nameStack.array) == 0:
             self.__nameStack.push(("<main>", "file"))
 
+        self.preConsts["CY_COMPILING"] = str(self.__cy)
+
         if precomp: section = self.__preCompiler(section)
-        self.tokens = Tokens(section)
 
         if self.__cy:
             if self.noCompile:
@@ -2365,6 +2376,8 @@ class Compiler:
                 print('This program cannot be ran directly or compiled in Python mode. Use the "pyxcompile" or "compile" commands.')
                 quit()
 
+        self.tokens = Tokens(section)
+        
         if "_OPAL_PRINT_RETURN_" in [x.tok for x in self.tokens.tokens]:
             self.flags["OPAL_PRINT_RETURN"] = True
             self.out += "from libs._internals import _OPAL_PRINT_RETURN_\n"
@@ -2386,6 +2399,7 @@ class Compiler:
         return self.compile(top + "\n" + self.readFile(fileIn), pyTop)
 
     def __compileWrite(self, fileIn, fileOut, top, pyTop = None):
+        self.preConsts["TARGET_FILE"] = f"r'{fileOut}'"
         result = self.compileFile(fileIn, top, pyTop)
 
         if result != "":

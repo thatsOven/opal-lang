@@ -508,7 +508,11 @@ Defines a constant that is only visible to the precompiler.
 ```
 $pdefine constantName constantContent
 ```
-opal will automatically create a `HOME_DIR` "pconstant" (and variable) that points to the base directory of the given file.
+opal will automatically create some "pconstants" you can use:
+- `HOME_DIR`: points to the base directory of the given file;
+- `CY_COMPILING`: a `bool` that indicates whether the compiler is compiling in Cython mode;
+- `RELEASE_MODE`: a `bool` that indicates whether the compiler is compiling in release mode;
+- `TARGET_FILE`: a `str` that points to the file opal is generating. It's `None` when opal is directly running code.
 ### `$include`
 Includes a Python or opal file inside an opal file. Expects a `str` or path-like argument (it gets evaluated using Python's `eval`). Usage of the `os` module is allowed and recommended, especially to join directories and filenames.
 ```
