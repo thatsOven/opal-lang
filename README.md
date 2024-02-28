@@ -552,6 +552,7 @@ $if GREET_USER
 $end
 ```
 
+The same action can also be performed through the `comptime` statement, though it's much slower. `$if` is useful for both simplicity and faster compile times, especially when working with large blocks of code.
 ### `$comptime`
 Defines a block of code (all the way until an `$end` statement) that will run during compilation. If an exception is thrown during this stage, the compiler will throw an error. In combination with the `$export` and `$exportBlock` statements, it can be used for conditional code generation. Example:
 ```
