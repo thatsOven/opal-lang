@@ -93,3 +93,11 @@ class Macro:
 
     def add(self, line):
         self.code += line
+
+class IfBlock:
+    def __init__(self, cond):
+        self.cond = cond
+        self.code = ""
+
+    def add(self, line):
+        self.code += line

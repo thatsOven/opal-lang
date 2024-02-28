@@ -28,7 +28,7 @@ from importlib         import import_module
 from traceback         import format_exception
 import os
 
-VERSION = (2024, 2, 27)
+VERSION = (2024, 2, 28)
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
     "short", "int", "long", "long long", "float", "bint",
@@ -2094,11 +2094,29 @@ class Compiler:
         else:
             result += self.__preCompiler(self.readFile(file)) + "\n"
         return result + "__OPALSIG[POP_NAME]()\n"
+    
+    def __addLine(self, line, result, savingMacro, compTime, export, ifBlock):
+        if savingMacro is None and compTime is None and export is None and ifBlock is None:
+            result += line + "\n"
+        else:
+            result += "\n" 
+
+            if savingMacro is not None:
+                savingMacro.add(line + "\n")
+            elif export is not None:
+                export += line + "\n"
+            elif ifBlock is not None:
+                ifBlock.add(line + "\n")
+            else:
+                compTime += line + "\n"
+
+        return result, savingMacro, compTime, export, ifBlock
 
     def __preCompiler(self, source):
         result = ""
         savingMacro = None
         compTime = None
+        ifBlock = None
         export = None
         inPy = False
 
@@ -2114,19 +2132,9 @@ class Compiler:
 
                     strippedLine = line.lstrip()
                     tabs = len(line) - len(strippedLine)
-                    line = f"__OPALSIG[EMBED_INFER]({tabs})." + strippedLine.rstrip() + ";\n"
+                    line = f"__OPALSIG[EMBED_INFER]({tabs}).{strippedLine.rstrip()};"
 
-                if savingMacro is None and compTime is None and export is None:
-                    result += line + "\n"
-                else:
-                    result += "\n" 
-
-                    if savingMacro is not None:
-                        savingMacro.add(line + "\n")
-                    elif export is not None:
-                        export += line + "\n"
-                    else:
-                        compTime += line + "\n"
+                result, savingMacro, compTime, export, ifBlock = self.__addLine(line, result, savingMacro, compTime, export, ifBlock)
 
                 continue
 
@@ -2151,15 +2159,7 @@ class Compiler:
                         tmp += self.__preCompiler(self.readFile(fileDir))
                     tmp += "__OPALSIG[POP_NAME]()\n"
 
-                    if savingMacro is None and compTime is None and export is None:
-                        result += tmp
-                    else:
-                        if savingMacro is not None:
-                            savingMacro.add(tmp)
-                        elif export is not None:
-                            export += tmp
-                        else:
-                            compTime += tmp
+                    result, savingMacro, compTime, export, ifBlock = self.__addLine(tmp, result, savingMacro, compTime, export, ifBlock)
                 case "includeDirectory":
                     fileDir = self.getDir(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
 
@@ -2211,8 +2211,8 @@ class Compiler:
 
                     export = ""
                 case "end":
-                    if savingMacro is None and compTime is None and export is None:
-                        self.__lineErr("$end found with no macro definition, comptime block or export block", i)
+                    if savingMacro is None and compTime is None and export is None and ifBlock is None:
+                        self.__lineErr("$end found with no macro definition, comptime, export or if block", i)
                         continue
 
                     if savingMacro is not None:
@@ -2228,6 +2228,16 @@ class Compiler:
 
                         compTime += 'return "' + encode(self.replaceConsts(export.strip(), self.preConsts | self.consts | COMPTIME_EXPORT_VARS)) + '";\n'
                         export = None
+                    elif ifBlock is not None:
+                        if ifBlock.code == "":
+                            self.__lineWarn("empty if block", i)
+                            continue
+                        
+                        if eval(self.replaceConsts(ifBlock.cond, self.preConsts | self.consts)):
+                            result += ifBlock.code
+                        else:
+                            result += "\n" * ifBlock.code.count("\n")
+                        ifBlock = None
                     else:
                         if compTime == "":
                             self.__lineWarn("empty comptime block", i)
@@ -2276,10 +2286,7 @@ class Compiler:
                     buf += macro.code
                     buf += "__OPALSIG[POP_NAME]()\n"
                     
-                    if savingMacro is None:
-                        result += buf
-                    else:
-                        savingMacro.add(buf)
+                    result, savingMacro, compTime, export, ifBlock = self.__addLine(buf, result, savingMacro, compTime, export, ifBlock)
                 case "nocompile":
                     inPy = True
                 case "restore":
@@ -2292,33 +2299,26 @@ class Compiler:
                     arg = tokenizedLine.next().tok
                     val = tokenizedLine.next().tok
 
-                    result += "@cython." + arg + f"({val});\n"
+                    result, savingMacro, compTime, export, ifBlock = self.__addLine("@cython." + arg + f"({val});", result, savingMacro, compTime, export, ifBlock)
                 case "tabcontext":
                     qty = Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join()
                     self.__manualSig = False
 
-                    buf = f"__OPALSIG[TABS_ADD]({qty})\n"
-
-                    if savingMacro is None:
-                        result += buf
-                    else:
-                        savingMacro.add(buf)
+                    result, savingMacro, compTime, export, ifBlock = self.__addLine(f"__OPALSIG[TABS_ADD]({qty})", result, savingMacro, compTime, export, ifBlock)
                 case "embed":
                     self.__manualSig = False
 
-                    buf = f"__OPALSIG[EMBED_INFER](0)." + Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join() + ";\n"
-
-                    if savingMacro is None:
-                        result += buf
-                    else:
-                        savingMacro.add(buf)
+                    result, savingMacro, compTime, export, ifBlock = self.__addLine(
+                        f"__OPALSIG[EMBED_INFER](0)." + Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join() + ";", 
+                        result, savingMacro, compTime, export, ifBlock
+                    )
                 case "cdef":
                     self.__manualSig = False
 
-                    if savingMacro is None:
-                        result += "__OPALSIG[CDEF]()\n"
-                    else:
-                        savingMacro.add("__OPALSIG[CDEF]()\n")
+                    result, savingMacro, compTime, export, ifBlock = self.__addLine("__OPALSIG[CDEF]()", result, savingMacro, compTime, export, ifBlock)
+                case "if":
+                    ifBlock = IfBlock(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
+                    result += "\n"
                 case _:
                     self.__lineErr("unknown or incomplete precompiler instruction", i)
 
@@ -2399,7 +2399,7 @@ class Compiler:
         return self.compile(top + "\n" + self.readFile(fileIn), pyTop)
 
     def __compileWrite(self, fileIn, fileOut, top, pyTop = None):
-        self.preConsts["TARGET_FILE"] = f"r'{fileOut}'"
+        self.preConsts["TARGET_FILE"] = f"r'{os.path.abspath(fileOut)}'"
         result = self.compileFile(fileIn, top, pyTop)
 
         if result != "":

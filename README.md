@@ -541,6 +541,17 @@ Macros are called using the `$call` statement:
 $call sayHi
 $call add(2, 4)
 ```
+### `$if`
+Exports a block of code (all the way until an `$end` statement) if a condition is `True`.
+```
+package opal: import *;
+
+$define GREET_USER True
+$if GREET_USER
+	IO.out("Hi, user!\n");
+$end
+```
+
 ### `$comptime`
 Defines a block of code (all the way until an `$end` statement) that will run during compilation. If an exception is thrown during this stage, the compiler will throw an error. In combination with the `$export` and `$exportBlock` statements, it can be used for conditional code generation. Example:
 ```
