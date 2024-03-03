@@ -96,8 +96,16 @@ class Macro:
 
 class IfBlock:
     def __init__(self, cond):
-        self.cond = cond
-        self.code = ""
+        self.cond     = cond
+        self.ifCode   = ""
+        self.elseCode = ""
+        self._else    = False
 
     def add(self, line):
-        self.code += line
+        if self._else:
+            self.elseCode += line
+        else:
+            self.ifCode += line
+
+    def elseBlock(self):
+        self._else = True

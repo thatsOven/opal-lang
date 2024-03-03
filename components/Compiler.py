@@ -28,7 +28,7 @@ from importlib         import import_module
 from traceback         import format_exception
 import os
 
-VERSION = (2024, 2, 28)
+VERSION = (2024, 3, 3)
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
     "short", "int", "long", "long long", "float", "bint",
@@ -2177,7 +2177,7 @@ class Compiler:
                     self.preConsts[name] = content
                 case "macro":
                     if savingMacro is not None:
-                        self.__lineErr("found recursive macro definition", i)
+                        self.__lineErr("nested macros are not allowed", i)
                         continue
 
                     name = tokenizedLine.next().tok
@@ -2229,14 +2229,16 @@ class Compiler:
                         compTime += 'return "' + encode(self.replaceConsts(export.strip(), self.preConsts | self.consts | COMPTIME_EXPORT_VARS)) + '";\n'
                         export = None
                     elif ifBlock is not None:
-                        if ifBlock.code == "":
-                            self.__lineWarn("empty if block", i)
-                            continue
+                        if ifBlock.ifCode == "":
+                            self.__lineWarn("empty $if block", i)
+
+                        if ifBlock.elseCode == "":
+                            self.__lineWarn("empty $else block", i)
                         
                         if eval(self.replaceConsts(ifBlock.cond, self.preConsts | self.consts)):
-                            result += ifBlock.code
+                            result += ifBlock.ifCode + "\n" * ifBlock.elseCode.count("\n")
                         else:
-                            result += "\n" * ifBlock.code.count("\n")
+                            result += "\n" * ifBlock.ifCode.count("\n") + ifBlock.elseCode
                         ifBlock = None
                     else:
                         if compTime == "":
@@ -2317,7 +2319,18 @@ class Compiler:
 
                     result, savingMacro, compTime, export, ifBlock = self.__addLine("__OPALSIG[CDEF]()", result, savingMacro, compTime, export, ifBlock)
                 case "if":
+                    if ifBlock is not None:
+                        self.__lineErr("nested $if blocks are not allowed", i)
+                        continue
+
                     ifBlock = IfBlock(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
+                    result += "\n"
+                case "else":
+                    if ifBlock is None:
+                        self.__lineErr("found $else with no $if", i)
+                        continue
+
+                    ifBlock.elseBlock()
                     result += "\n"
                 case _:
                     self.__lineErr("unknown or incomplete precompiler instruction", i)

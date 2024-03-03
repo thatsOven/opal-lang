@@ -551,6 +551,17 @@ $if GREET_USER
 	IO.out("Hi, user!\n");
 $end
 ```
+An `$else` statement is also available:
+```
+package opal: import *;
+
+$define GREET_USER True
+$if GREET_USER
+	IO.out("Hi, user!\n");
+$else
+	IO.out("Sorry, user. No greeting this time :(\n");
+$end
+```
 
 The same action can also be performed through the `comptime` statement, though it's much slower. `$if` is useful for both simplicity and faster compile times, especially when working with large blocks of code.
 ### `$comptime`
