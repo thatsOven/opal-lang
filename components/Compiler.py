@@ -28,7 +28,7 @@ from importlib         import import_module
 from traceback         import format_exception
 import os
 
-VERSION = (2024, 3, 3)
+VERSION = (2024, 3, 19)
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
     "short", "int", "long", "long long", "float", "bint",
@@ -464,7 +464,9 @@ class Compiler:
             self.__nameStack.lookforBeforeFn("class") and 
             (not self.nextUnchecked) and (not self.nextGlobal)
         ):
-            if type_ in CYTHON_TYPES:
+            if type_ in CYTHON_TYPES or self.nextCdef:
+                self.nextCdef = False
+
                 if loop is not None:
                     self.__note("consider moving these declarations outside of a loop so they can be automatically optimized", typeTok)
                 elif not self.__nameStack.lookforBeforeFn("conditional"):

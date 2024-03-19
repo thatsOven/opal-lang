@@ -98,9 +98,9 @@ new function __sortWithKey(array: object, a: int, b: int, getfn: object) void {
     new int auxLen  = b - a;
     new float CONST = auxLen / float(max_ - min_ + 1);
 
-    $embed cdef size_t* count  = <size_t*>PyMem_Malloc((auxLen + 1) * sizeof(size_t))
-    $embed cdef size_t* offset = <size_t*>PyMem_Malloc((auxLen + 1) * sizeof(size_t))
-    use count, offset;
+    $cdef
+    new (size_t*) count  = <size_t*>PyMem_Malloc((auxLen + 1) * sizeof(size_t)),
+                  offset = <size_t*>PyMem_Malloc((auxLen + 1) * sizeof(size_t));
     
     new int i;
     for i in range(auxLen + 1) {
@@ -157,9 +157,9 @@ new function __sort(array: object, a: int, b: int) void {
     new int auxLen  = b - a;
     new float CONST = auxLen / float(max_ - min_ + 1);
 
-    $embed cdef size_t* count  = <size_t*>PyMem_Malloc((auxLen + 1) * sizeof(size_t))
-    $embed cdef size_t* offset = <size_t*>PyMem_Malloc((auxLen + 1) * sizeof(size_t))
-    use count, offset;
+    $cdef
+    new (size_t*) count  = <size_t*>PyMem_Malloc((auxLen + 1) * sizeof(size_t)),
+                  offset = <size_t*>PyMem_Malloc((auxLen + 1) * sizeof(size_t));
     
     new int i;
     for i in range(auxLen + 1) {

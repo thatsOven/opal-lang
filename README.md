@@ -651,11 +651,22 @@ new function divide(a: float, b: float) float {
 }
 ```
 ### `$cdef`
-Applies the Cython `cdef` keyword to the next element when possible. For example:
+Applies the Cython `cdef` keyword to the next element when possible or forces a C definition on unknown types. For example:
 ```
 $cdef
 new function add(a: int, b: int) int {
 	return a + b;
+}
+
+$embed from cpython.mem cimport PyMem_Malloc, PyMem_Free
+new function mallocTest() {
+	use PyMem_Malloc, PyMem_Free;
+
+	$cdef
+	new (int*) memory = <int*>PyMem_Malloc(20 * sizeof(int));
+	
+	memory[0] = 2;
+	PyMem_Free(memory);
 }
 ```
 # Operators
