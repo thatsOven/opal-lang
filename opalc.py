@@ -31,7 +31,7 @@ from Cython.Compiler     import Options
 from components.Compiler import *
 
 RELEASE_COLLECT = ["__future__", "typeguard", "pygame", "unittest", "numpy", "json"]
-PY_STDLIB       = set(sys.stdlib_module_names)
+PY_STDLIB       = set(sys.stdlib_module_names) - {"antigravity"} # fun, but i don't wanna open the xkcd page every time i compile something
 NO_INSTALL      = {"opal"} | set(RELEASE_COLLECT) | PY_STDLIB
 
 def build(file, debug = False):
