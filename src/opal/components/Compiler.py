@@ -29,7 +29,7 @@ import os
 from opal.components.utils  import *
 from opal.components.Tokens import *
 
-VERSION = (2024, 5, 10, 4)
+VERSION = (2024, 5, 10, 6)
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
     "short", "int", "long", "long long", "float", "bint",
