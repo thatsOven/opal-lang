@@ -29,7 +29,7 @@ import os
 from opal.components.utils  import *
 from opal.components.Tokens import *
 
-VERSION = (2024, 5, 10)
+VERSION = (2024, 5, 10, 2)
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
     "short", "int", "long", "long long", "float", "bint",
@@ -2074,7 +2074,7 @@ class Compiler:
         return eval(self.replaceConsts(expr.strip(), self.preConsts | self.consts))
 
     def readFile(self, fileName, rep = False):
-        with open(fileName, "r") as txt:
+        with open(fileName, "r", encoding = "utf-8") as txt:
             content = txt.read()
         return content.replace("\t", " " if rep else "")
 
@@ -2429,7 +2429,7 @@ class Compiler:
         result = self.compileFile(fileIn, top, pyTop)
 
         if result != "":
-            with open(fileOut, "w") as txt:
+            with open(fileOut, "w", encoding = "utf-8") as txt:
                 txt.write(result)
     
     def compileToPY(self, fileIn, fileOut, top = ""):

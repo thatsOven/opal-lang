@@ -294,6 +294,8 @@ if __name__ == "__main__":
                 sys.exit(1)
 
             release(compilePy)
+        elif sys.argv[1] == "path":
+            print(getHomeDirFromFile(__file__))
         else:
             sys.argv[1] = sys.argv[1]
             if not os.path.exists(sys.argv[1]):
