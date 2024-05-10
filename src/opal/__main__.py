@@ -22,12 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import os, sys, shutil, numpy, subprocess
-from timeit              import default_timer
-from pathlib             import Path
-from setuptools          import setup
-from Cython.Build        import cythonize
-from Cython.Compiler     import Options
+import os, sys, shutil, numpy, subprocess, traceback
+from timeit          import default_timer
+from pathlib         import Path
+from setuptools      import setup
+from Cython.Build    import cythonize
+from Cython.Compiler import Options
 
 from opal.components.Compiler import *
 
@@ -50,7 +50,8 @@ def build(file, debug = False):
             }),
             zip_safe = False
         )
-    except:
+    except Exception:
+        print(traceback.format_exc())
         ok = False
     else:
         ok = True
@@ -89,7 +90,7 @@ def compileNormal(compiler, fileInput, name, endName, top, time, noModule):
                 filename = sys.argv[3]
                 name = os.path.basename(filename).split(".")[0]
 
-            with open(filename, "w") as py:
+            with open(filename, "w", encoding = "utf-8") as py:
                 py.write(f"from os import environ\nenviron['_OPAL_RUN_AS_MAIN_']=''\nimport {name}\ndel environ['_OPAL_RUN_AS_MAIN_']")
         return filename
 
