@@ -13,7 +13,7 @@ where = ["src"]
 
 [project]
 name = "opal-lang"
-version = "2024.5.10.6"
+version = "2024.5.10.7"
 description = "A programming language based on Python and Cython"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -25,7 +25,7 @@ classifiers = [
 dependencies = [
     "pyinstaller",
     "colorama",
-    "pygame-ce",
+    "pygame-ce==2.3.2",
     "numpy",
     "typeguard",
     "Cython",
