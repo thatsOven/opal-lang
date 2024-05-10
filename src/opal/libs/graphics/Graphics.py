@@ -25,9 +25,13 @@ SOFTWARE.
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame, numpy, sys
-from libs.sort   import sort
-from libs.Vector import Vector
-from pathlib     import Path
+from opal.libs.Vector import Vector
+from pathlib          import Path
+
+try:
+    from opal.libs.sort import sort
+except ImportError:
+    sort = None
 
 __circle_cache = {}
 def __circlepoints(r):

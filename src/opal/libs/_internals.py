@@ -1,4 +1,5 @@
 from typeguard import check_type
+from typing import Type
 
 class dynamic: pass
 
@@ -22,7 +23,7 @@ class OpalNamespace:
 class OpalObject:
     _OPAL_TYPEMODE_ = _TypeModes.HYBRID
 
-def mode(mode: _TypeMode):
+def mode(mode: Type[_TypeMode]):
     def fn(cls: OpalObject):
         if mode not in (hybrid, check, force, none):
             raise TypeError(f'Invalid type mode "{mode}"')

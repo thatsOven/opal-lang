@@ -8,8 +8,8 @@ spath = getcwd()
 with open("opal.py", "w") as script:
     script.write("from subprocess import run\nfrom sys import argv\n")
     chdir("..")
-    p = path.join(getcwd(), 'opalc.py').replace("\\", "\\\\")
-    script.write(f"run(['python', '{p}'] + argv[1:])")
+    p = path.join(getcwd(), '__main__.py').replace("\\", "\\\\")
+    script.write(f"run([sys.executable, '{p}'] + argv[1:])")
 
 chdir(spath)
 

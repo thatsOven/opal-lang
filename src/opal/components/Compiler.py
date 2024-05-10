@@ -22,13 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from components.utils  import *
-from components.Tokens import *
-from importlib         import import_module
-from traceback         import format_exception
+from importlib import import_module
+from traceback import format_exception
 import os
 
-VERSION = (2024, 3, 19)
+from opal.components.utils  import *
+from opal.components.Tokens import *
+
+VERSION = (2024, 5, 10)
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
     "short", "int", "long", "long long", "float", "bint",
@@ -119,7 +120,7 @@ class Compiler:
             case "class":
                 if not self.flags["object"]:
                     self.flags["object"] = True
-                    self.out = "from libs._internals import OpalObject\n" + self.out
+                    self.out = "from opal.libs._internals import OpalObject\n" + self.out
 
                 translates = "class"
             case _:
@@ -1058,7 +1059,7 @@ class Compiler:
         
         if not self.flags["namespace"]:
             self.flags["namespace"] = True
-            self.out = "from libs._internals import OpalNamespace\n" + self.out
+            self.out = "from opal.libs._internals import OpalNamespace\n" + self.out
 
         if self.nextStatic:
             self.nextStatic = False
@@ -2083,8 +2084,16 @@ class Compiler:
         result = ""
         for line in self.readFile(fileDir).split("\n"):
             strippedLine = line.lstrip()
-            tabs = len(line) - len(strippedLine)
-            result += f"__OPALSIG[EMBED_INFER]({tabs})." + strippedLine.rstrip() + ";\n"
+            if len(strippedLine) == 0: continue
+
+            if strippedLine[0] == "#":
+                result += strippedLine.rstrip() + "\n"
+            else:
+                tabs = len(line) - len(strippedLine)
+                result += f"__OPALSIG[EMBED_INFER]({tabs})." + strippedLine.rstrip() + ";\n"
+
+        if fileDir.endswith("test.py"):
+            print(result)
 
         return result
     
@@ -2092,7 +2101,7 @@ class Compiler:
         self.__manualSig = False
         result += f'__OPALSIG[PUSH_NAME]("{os.path.basename(file)}","file")\n'
         if file.endswith(".py") or file.endswith(".pyx"):
-            result += self.__readEmbed(file)
+            result += self.__preCompiler(self.__readEmbed(file))
         else:
             result += self.__preCompiler(self.readFile(file)) + "\n"
         return result + "__OPALSIG[POP_NAME]()\n"
@@ -2127,8 +2136,9 @@ class Compiler:
             if noSpaceLine == "": 
                 result += "\n"
                 continue
-
-            if noSpaceLine[0] != "$":
+            
+            pyPre = line.lstrip().startswith("#opal$")
+            if noSpaceLine[0] != "$" and not pyPre:
                 if inPy:
                     self.__manualSig = False
 
@@ -2140,10 +2150,14 @@ class Compiler:
 
                 continue
 
+            if pyPre: line = line[line.index("#") + 1:]
+
             result += "\n"
 
             tokenizedLine = Tokens(line)
             tokenizedLine.next()
+            
+            if pyPre: tokenizedLine.next()
 
             next = tokenizedLine.next()
             match next.tok:
@@ -2156,7 +2170,7 @@ class Compiler:
                     pyx = fileDir.endswith(".pyx")
                     if fileDir.endswith(".py") or pyx:
                         if pyx and not self.__cy: continue
-                        tmp += self.__readEmbed(fileDir)
+                        tmp += self.__preCompiler(self.__readEmbed(fileDir))
                     else:
                         tmp += self.__preCompiler(self.readFile(fileDir))
                     tmp += "__OPALSIG[POP_NAME]()\n"
@@ -2233,9 +2247,6 @@ class Compiler:
                     elif ifBlock is not None:
                         if ifBlock.ifCode == "":
                             self.__lineWarn("empty $if block", i)
-
-                        if ifBlock.elseCode == "":
-                            self.__lineWarn("empty $else block", i)
                         
                         if eval(self.replaceConsts(ifBlock.cond, self.preConsts | self.consts)):
                             result += ifBlock.ifCode + "\n" * ifBlock.elseCode.count("\n")
@@ -2369,11 +2380,11 @@ class Compiler:
 
         match self.typeMode:
             case "hybrid":
-                self.out += "from libs._internals import _OPAL_CHECK_TYPE_\n"
+                self.out += "from opal.libs._internals import _OPAL_CHECK_TYPE_\n"
             case "check":
                 self.out += "from typeguard import check_type as _OPAL_CHECK_TYPE_\n"
             case "force":
-                self.out += "from libs._internals import _OPAL_FORCE_TYPE_ as _OPAL_CHECK_TYPE_\n"
+                self.out += "from opal.libs._internals import _OPAL_FORCE_TYPE_ as _OPAL_CHECK_TYPE_\n"
 
         if len(self.__nameStack.array) == 0:
             self.__nameStack.push(("<main>", "file"))
@@ -2395,7 +2406,7 @@ class Compiler:
         
         if "_OPAL_PRINT_RETURN_" in [x.tok for x in self.tokens.tokens]:
             self.flags["OPAL_PRINT_RETURN"] = True
-            self.out += "from libs._internals import _OPAL_PRINT_RETURN_\n"
+            self.out += "from opal.libs._internals import _OPAL_PRINT_RETURN_\n"
 
         self.__compiler(self.tokens, 0, None, {})
         self.imports = list(set(self.imports))

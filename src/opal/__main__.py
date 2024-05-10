@@ -28,11 +28,12 @@ from pathlib             import Path
 from setuptools          import setup
 from Cython.Build        import cythonize
 from Cython.Compiler     import Options
-from components.Compiler import *
+
+from opal.components.Compiler import *
 
 RELEASE_COLLECT = ["__future__", "typeguard", "pygame", "unittest", "numpy", "json"]
-PY_STDLIB       = set(sys.stdlib_module_names) - {"antigravity"} # fun, but i don't wanna open the xkcd page every time i compile something
-NO_INSTALL      = {"opal"} | set(RELEASE_COLLECT) | PY_STDLIB
+PY_STDLIB       = set(sys.stdlib_module_names) | {"opal"} - {"antigravity"} # fun, but i don't wanna open the xkcd page every time i compile something
+NO_INSTALL      = set(RELEASE_COLLECT) | PY_STDLIB
 
 def build(file, debug = False):
     Options.annotate = debug
@@ -138,15 +139,6 @@ def release(fn):
 
     filename = fn(compiler, ianthe.config["source"], "opal_program", name, top, time, True)
     if filename is not None:
-        if "copy" in ianthe.config:
-            ianthe.config["copy"][os.path.abspath("opal.py")] = "file"
-            ianthe.config["copy"][os.path.abspath("libs")] = "folder"
-        else:
-            ianthe.config["copy"] = {
-                os.path.abspath("opal.py"): "file",
-                os.path.abspath("libs"): "folder"
-            }
-
         if "hidden-imports" in ianthe.config:
               ianthe.config["hidden-imports"] = list(set(ianthe.config["hidden-imports"]) | PY_STDLIB)
         else: ianthe.config["hidden-imports"] = list(PY_STDLIB)
@@ -289,7 +281,7 @@ if __name__ == "__main__":
 
             if ok:
                 os.chdir(os.path.join(getHomeDirFromFile(__file__), "runner"))
-                import runner.build
+                import opal.runner.build
         elif sys.argv[1] == "release":
             if len(sys.argv) == 2:
                 print('input file required for command "release"')

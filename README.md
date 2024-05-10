@@ -3,6 +3,18 @@
 # opal 
 opal is a transcompiled programming language based on Python and Cython. 
 
+# Installation
+To install opal on your machine, execute these commands:
+```
+pip install opal-lang --user
+python -m opal build
+```
+User installation is necessary due to permission issues during the process of building the standard library.
+
+Note that you might need to install a C compiler, as Cython will be installed as a dependency.
+
+On Windows, after the building process is complete, it's possible to add the opal folder to PATH to have a global `opal` executable.
+
 # Compiler usage
 [ ] = optional
 * To compile to a Python `.py` file: `opal pycompile input_file [output_file]`
@@ -40,18 +52,6 @@ opal is a transcompiled programming language based on Python and Cython.
 - `--debug`
 	- Saves the Cython annotations file when compiling for debugging purposes.
 	- **Usage**: --debug
-# Installation
-To properly run opal code, you will need to install these Python modules:
-```
-pygame
-numpy
-typeguard
-Cython
-ianthe>=2023.12.17
-```
-opal only supports Python 3.10 and upper.
-
-Once files are downloaded on your machine, run `opalc.py build` to build the standard library and the runner executable.
 # Hello World!
 ```
 package opal: import *;
