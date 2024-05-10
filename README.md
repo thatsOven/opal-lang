@@ -6,10 +6,9 @@ opal is a transcompiled programming language based on Python and Cython.
 # Installation
 To install opal on your machine, execute these commands:
 ```
-pip install opal-lang --user
+pip install opal-lang
 python -m opal build
 ```
-User installation is necessary due to permission issues during the process of building the standard library.
 
 Note that you might need to install a C compiler, as Cython will be installed as a dependency.
 
