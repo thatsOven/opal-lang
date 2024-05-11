@@ -2416,8 +2416,12 @@ class Compiler:
             else:
                 self.out += 'if __name__=="__main__":_OPAL_MAIN_FUNCTION_()\n'
 
+        if self.preConsts["RELEASE_MODE"] == "False":
+              top = f"from sys import path\npath.append({self.preConsts['OPAL_DIR']})\ndel path\n"
+        else: top = ""
+
         if self.hadError: return ""
-        else:             return self.out
+        else:             return top + self.out
 
     def compileFile(self, fileIn, top = "", pyTop = None):
         self.__nameStack.push((fileIn, "file"))

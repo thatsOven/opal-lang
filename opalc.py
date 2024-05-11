@@ -191,6 +191,7 @@ if __name__ == "__main__":
         compiler = Compiler().initMain()
         compiler.handleArgs(sys.argv)
         compiler.preConsts["RELEASE_MODE"] = "False"
+        compiler.preConsts["OPAL_DIR"] = f"r'{getHomeDirFromFile(__file__)}'"
 
         if "--debug" in sys.argv:
             debug = True
