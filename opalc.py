@@ -22,18 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import os, sys, shutil, numpy, subprocess, traceback
-from timeit          import default_timer
-from pathlib         import Path
-from setuptools      import setup
-from Cython.Build    import cythonize
-from Cython.Compiler import Options
-
-from opal.components.Compiler import *
+import os, sys, shutil, numpy, subprocess
+from timeit              import default_timer
+from pathlib             import Path
+from setuptools          import setup
+from Cython.Build        import cythonize
+from Cython.Compiler     import Options
+from components.Compiler import *
 
 RELEASE_COLLECT = ["__future__", "typeguard", "pygame", "unittest", "numpy", "json"]
-PY_STDLIB       = set(sys.stdlib_module_names) | {"opal"} - {"antigravity"} # fun, but i don't wanna open the xkcd page every time i compile something
-NO_INSTALL      = set(RELEASE_COLLECT) | PY_STDLIB
+PY_STDLIB       = set(sys.stdlib_module_names) - {"antigravity"} # fun, but i don't wanna open the xkcd page every time i compile something
+NO_INSTALL      = {"opal"} | set(RELEASE_COLLECT) | PY_STDLIB
 
 def build(file, debug = False):
     Options.annotate = debug
@@ -50,8 +49,7 @@ def build(file, debug = False):
             }),
             zip_safe = False
         )
-    except Exception:
-        print(traceback.format_exc())
+    except:
         ok = False
     else:
         ok = True
@@ -90,7 +88,7 @@ def compileNormal(compiler, fileInput, name, endName, top, time, noModule):
                 filename = sys.argv[3]
                 name = os.path.basename(filename).split(".")[0]
 
-            with open(filename, "w", encoding = "utf-8") as py:
+            with open(filename, "w") as py:
                 py.write(f"from os import environ\nenviron['_OPAL_RUN_AS_MAIN_']=''\nimport {name}\ndel environ['_OPAL_RUN_AS_MAIN_']")
         return filename
 
@@ -140,6 +138,15 @@ def release(fn):
 
     filename = fn(compiler, ianthe.config["source"], "opal_program", name, top, time, True)
     if filename is not None:
+        if "copy" in ianthe.config:
+            ianthe.config["copy"][os.path.abspath("opal.py")] = "file"
+            ianthe.config["copy"][os.path.abspath("libs")] = "folder"
+        else:
+            ianthe.config["copy"] = {
+                os.path.abspath("opal.py"): "file",
+                os.path.abspath("libs"): "folder"
+            }
+
         if "hidden-imports" in ianthe.config:
               ianthe.config["hidden-imports"] = list(set(ianthe.config["hidden-imports"]) | PY_STDLIB)
         else: ianthe.config["hidden-imports"] = list(PY_STDLIB)
@@ -282,7 +289,7 @@ if __name__ == "__main__":
 
             if ok:
                 os.chdir(os.path.join(getHomeDirFromFile(__file__), "runner"))
-                import opal.runner.build
+                import runner.build
         elif sys.argv[1] == "release":
             if len(sys.argv) == 2:
                 print('input file required for command "release"')
@@ -295,8 +302,6 @@ if __name__ == "__main__":
                 sys.exit(1)
 
             release(compilePy)
-        elif sys.argv[1] == "path":
-            print(getHomeDirFromFile(__file__))
         else:
             sys.argv[1] = sys.argv[1]
             if not os.path.exists(sys.argv[1]):

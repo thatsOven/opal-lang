@@ -22,14 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from importlib import import_module
-from traceback import format_exception
+from components.utils  import *
+from components.Tokens import *
+from importlib         import import_module
+from traceback         import format_exception
 import os
 
-from opal.components.utils  import *
-from opal.components.Tokens import *
-
-VERSION = (2024, 5, 10, 7)
+VERSION = (2024, 5, 11)
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
     "short", "int", "long", "long long", "float", "bint",
@@ -120,7 +119,7 @@ class Compiler:
             case "class":
                 if not self.flags["object"]:
                     self.flags["object"] = True
-                    self.out = "from opal.libs._internals import OpalObject\n" + self.out
+                    self.out = "from libs._internals import OpalObject\n" + self.out
 
                 translates = "class"
             case _:
@@ -1059,7 +1058,7 @@ class Compiler:
         
         if not self.flags["namespace"]:
             self.flags["namespace"] = True
-            self.out = "from opal.libs._internals import OpalNamespace\n" + self.out
+            self.out = "from libs._internals import OpalNamespace\n" + self.out
 
         if self.nextStatic:
             self.nextStatic = False
@@ -2380,11 +2379,11 @@ class Compiler:
 
         match self.typeMode:
             case "hybrid":
-                self.out += "from opal.libs._internals import _OPAL_CHECK_TYPE_\n"
+                self.out += "from libs._internals import _OPAL_CHECK_TYPE_\n"
             case "check":
                 self.out += "from typeguard import check_type as _OPAL_CHECK_TYPE_\n"
             case "force":
-                self.out += "from opal.libs._internals import _OPAL_FORCE_TYPE_ as _OPAL_CHECK_TYPE_\n"
+                self.out += "from libs._internals import _OPAL_FORCE_TYPE_ as _OPAL_CHECK_TYPE_\n"
 
         if len(self.__nameStack.array) == 0:
             self.__nameStack.push(("<main>", "file"))
@@ -2406,7 +2405,7 @@ class Compiler:
         
         if "_OPAL_PRINT_RETURN_" in [x.tok for x in self.tokens.tokens]:
             self.flags["OPAL_PRINT_RETURN"] = True
-            self.out += "from opal.libs._internals import _OPAL_PRINT_RETURN_\n"
+            self.out += "from libs._internals import _OPAL_PRINT_RETURN_\n"
 
         self.__compiler(self.tokens, 0, None, {})
         self.imports = list(set(self.imports))

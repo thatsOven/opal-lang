@@ -22,14 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-from opal.libs._internals import dynamic
-
-try:
-    from opal.libs.sort     import sort
-    from opal.libs.fastSort import fastSort
-except ImportError:
-    sort     = None
-    fastSort = None
+from libs._internals import dynamic
+from libs.sort       import sort
+from libs.fastSort   import fastSort
 
 class Array:
     def __init__(self, capacity, arrayType = dynamic, contents = None):
