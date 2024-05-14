@@ -28,7 +28,7 @@ from importlib         import import_module
 from traceback         import format_exception
 import os
 
-VERSION = (2024, 5, 11)
+VERSION = (2024, 5, 14)
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
     "short", "int", "long", "long long", "float", "bint",
@@ -119,7 +119,7 @@ class Compiler:
             case "class":
                 if not self.flags["object"]:
                     self.flags["object"] = True
-                    self.out = "from libs._internals import OpalObject\n" + self.out
+                    self.headers += "from libs._internals import OpalObject\n"
 
                 translates = "class"
             case _:
@@ -811,7 +811,7 @@ class Compiler:
 
         if not self.flags["abstract"]:
             self.flags["abstract"] = True
-            self.out = "from abc import abstractmethod\nfrom abc import ABC as _ABSTRACT_BASE_CLASS_\n" + self.out
+            self.headers += "from abc import abstractmethod\nfrom abc import ABC as _ABSTRACT_BASE_CLASS_\n"
 
         return loop, objNames
     
@@ -1058,7 +1058,7 @@ class Compiler:
         
         if not self.flags["namespace"]:
             self.flags["namespace"] = True
-            self.out = "from libs._internals import OpalNamespace\n" + self.out
+            self.headers += "from libs._internals import OpalNamespace\n"
 
         if self.nextStatic:
             self.nextStatic = False
@@ -1629,7 +1629,7 @@ class Compiler:
 
             if not self.flags["enum"]:
                 self.flags["enum"] = True
-                self.out = "from enum import IntEnum\n" + self.out
+                self.headers += "from enum import IntEnum\n"
 
             self.out += (" " * tabs) + Tokens([Token("class"), value[0], Token("(IntEnum)")]).join() + ":"
 
@@ -1973,6 +1973,7 @@ class Compiler:
                 tokens.pos -= 1
                 self.__variablesHandler(tokens, tabs, objNames)
             elif next.tok == "__OPALSIG":
+                line = next.line
                 kw = tokens.last()
 
                 if self.__manualSig:
@@ -2008,7 +2009,10 @@ class Compiler:
                         self.out += (" " * (args + tabs)) + Tokens(code).join() + "\n"
                     case "PUSH_NAME":
                         try:
-                            self.__nameStack.push(eval(f"({args})"))
+                            if ',"file"' in args:
+                                self.__nameStack.push(eval(f"({args},{line})"))
+                            else:
+                                self.__nameStack.push(eval(f"({args})"))
                         except:
                             self.__error('invalid arguments for "PUSH_NAME" signal', kw)
                     case "POP_NAME":
@@ -2080,7 +2084,7 @@ class Compiler:
     def __readEmbed(self, fileDir):
         self.__manualSig = False
 
-        result = ""
+        result = MutableStringBuffer()
         for line in self.readFile(fileDir).split("\n"):
             strippedLine = line.lstrip()
             if len(strippedLine) == 0: continue
@@ -2091,10 +2095,7 @@ class Compiler:
                 tabs = len(line) - len(strippedLine)
                 result += f"__OPALSIG[EMBED_INFER]({tabs})." + strippedLine.rstrip() + ";\n"
 
-        if fileDir.endswith("test.py"):
-            print(result)
-
-        return result
+        return str(result)
     
     def __include(self, result, file):
         self.__manualSig = False
@@ -2103,7 +2104,8 @@ class Compiler:
             result += self.__preCompiler(self.__readEmbed(file))
         else:
             result += self.__preCompiler(self.readFile(file)) + "\n"
-        return result + "__OPALSIG[POP_NAME]()\n"
+        result += "__OPALSIG[POP_NAME]()\n"
+        return result
     
     def __addLine(self, line, result, savingMacro, compTime, export, ifBlock):
         if savingMacro is None and compTime is None and export is None and ifBlock is None:
@@ -2123,7 +2125,7 @@ class Compiler:
         return result, savingMacro, compTime, export, ifBlock
 
     def __preCompiler(self, source):
-        result = ""
+        result = MutableStringBuffer()
         savingMacro = None
         compTime = None
         ifBlock = None
@@ -2165,7 +2167,8 @@ class Compiler:
                         
                     fileDir = self.getDir(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
                         
-                    tmp = f'__OPALSIG[PUSH_NAME]("{os.path.basename(fileDir)}","file")\n'
+                    tmp = MutableStringBuffer()
+                    tmp += f'__OPALSIG[PUSH_NAME]("{os.path.basename(fileDir)}","file")\n'
                     pyx = fileDir.endswith(".pyx")
                     if fileDir.endswith(".py") or pyx:
                         if pyx and not self.__cy: continue
@@ -2174,7 +2177,7 @@ class Compiler:
                         tmp += self.__preCompiler(self.readFile(fileDir))
                     tmp += "__OPALSIG[POP_NAME]()\n"
 
-                    result, savingMacro, compTime, export, ifBlock = self.__addLine(tmp, result, savingMacro, compTime, export, ifBlock)
+                    result, savingMacro, compTime, export, ifBlock = self.__addLine(str(tmp), result, savingMacro, compTime, export, ifBlock)
                 case "includeDirectory":
                     fileDir = self.getDir(Tokens(tokenizedLine.tokens[tokenizedLine.pos:]).join())
 
@@ -2212,7 +2215,7 @@ class Compiler:
                         self.__lineErr("cannot use comptime block inside another comptime block", i)
                         continue
 
-                    compTime = ""
+                    compTime = MutableStringBuffer()
                 case "export":
                     if compTime is None:
                         self.__lineErr("cannot use $export outside of a comptime block", i)
@@ -2224,42 +2227,45 @@ class Compiler:
                         self.__lineErr("cannot use $exportBlock outside of a comptime block", i)
                         continue
 
-                    export = ""
+                    export = MutableStringBuffer()
                 case "end":
                     if savingMacro is None and compTime is None and export is None and ifBlock is None:
                         self.__lineErr("$end found with no macro definition, comptime, export or if block", i)
                         continue
 
                     if savingMacro is not None:
-                        if savingMacro.code == "":
+                        if str(savingMacro.code) == "":
                             self.__lineWarn(f'the "{savingMacro.name}" macro is being saved as empty', i)
                             
                         self.macros[savingMacro.name] = savingMacro
                         savingMacro = None        
                     elif export is not None:
-                        if export == "":
+                        strExport = str(export)
+                        if strExport == "":
                             self.__lineWarn("empty export block", i)
                             continue
 
-                        compTime += 'return "' + encode(self.replaceConsts(export.strip(), self.preConsts | self.consts | COMPTIME_EXPORT_VARS)) + '";\n'
+                        compTime += 'return "' + encode(self.replaceConsts(strExport.strip(), self.preConsts | self.consts | COMPTIME_EXPORT_VARS)) + '";\n'
                         export = None
                     elif ifBlock is not None:
-                        if ifBlock.ifCode == "":
+                        strIfCode = str(ifBlock.ifCode)
+                        if strIfCode == "":
                             self.__lineWarn("empty $if block", i)
                         
                         if eval(self.replaceConsts(ifBlock.cond, self.preConsts | self.consts)):
-                            result += ifBlock.ifCode + "\n" * ifBlock.elseCode.count("\n")
+                            result += strIfCode + "\n" * str(ifBlock.elseCode).count("\n")
                         else:
-                            result += "\n" * ifBlock.ifCode.count("\n") + ifBlock.elseCode
+                            result += "\n" * strIfCode.count("\n") + str(ifBlock.elseCode)
                         ifBlock = None
                     else:
-                        if compTime == "":
+                        strCompTime = str(compTime)
+                        if strCompTime == "":
                             self.__lineWarn("empty comptime block", i)
                             continue
 
                         res = self.comptimeCompiler.compile(
                             "global:new function _OPAL_COMPTIME_BLOCK_(){\nglobal COMPTIME_EXPORT_VARS;\n" + 
-                            self.replaceConsts(compTime.strip(), self.preConsts | self.consts) + 
+                            self.replaceConsts(strCompTime.strip(), self.preConsts | self.consts) + 
                             "}\n", precomp = False
                         )
                         compTime = None
@@ -2285,7 +2291,8 @@ class Compiler:
                     macro = self.macros[name]
 
                     self.__manualSig = False
-                    buf = f'__OPALSIG[PUSH_NAME]("{name}","macro")\n'
+                    buf = MutableStringBuffer()
+                    buf += f'__OPALSIG[PUSH_NAME]("{name}","macro")\n'
                     next = tokenizedLine.peek()
                     if next is not None and next.tok == "(":
                         tokenizedLine.next()
@@ -2300,7 +2307,7 @@ class Compiler:
                     buf += macro.code
                     buf += "__OPALSIG[POP_NAME]()\n"
                     
-                    result, savingMacro, compTime, export, ifBlock = self.__addLine(buf, result, savingMacro, compTime, export, ifBlock)
+                    result, savingMacro, compTime, export, ifBlock = self.__addLine(str(buf), result, savingMacro, compTime, export, ifBlock)
                 case "nocompile":
                     inPy = True
                 case "restore":
@@ -2347,7 +2354,7 @@ class Compiler:
                 case _:
                     self.__lineErr("unknown or incomplete precompiler instruction", i)
 
-        return self.replaceConsts(result, self.consts)
+        return self.replaceConsts(str(result), self.consts)
     
     def reset(self):
         self.macros    = {}
@@ -2355,7 +2362,8 @@ class Compiler:
         self.autoTypes = {}
         self.imports   = []
 
-        self.out      = ""
+        self.out      = MutableStringBuffer()
+        self.headers  = MutableStringBuffer()
         self.hadError = False
 
         self.__manualSig   = True
@@ -2386,7 +2394,7 @@ class Compiler:
                 self.out += "from libs._internals import _OPAL_FORCE_TYPE_ as _OPAL_CHECK_TYPE_\n"
 
         if len(self.__nameStack.array) == 0:
-            self.__nameStack.push(("<main>", "file"))
+            self.__nameStack.push(("<main>", "file", 0))
 
         self.preConsts["CY_COMPILING"] = str(self.__cy)
 
@@ -2421,10 +2429,10 @@ class Compiler:
         else: top = ""
 
         if self.hadError: return ""
-        else:             return top + self.out
+        else:             return top + str(self.headers) + str(self.out)
 
     def compileFile(self, fileIn, top = "", pyTop = None):
-        self.__nameStack.push((fileIn, "file"))
+        self.__nameStack.push((fileIn, "file", 0))
         return self.compile(top + "\n" + self.readFile(fileIn), pyTop)
 
     def __compileWrite(self, fileIn, fileOut, top, pyTop = None):

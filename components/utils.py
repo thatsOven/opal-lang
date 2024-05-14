@@ -64,11 +64,13 @@ class NameStack:
             curr = array.pop()
             names.append(curr)
 
-        out = "in "
+        out    = "in "
+        offset = 1
         for name in reversed(names):
             match name[1]:
                 case "file":
                     out += name[0] + ": "
+                    offset = name[2]
                 case "fn" | "cfn":
                     out += name[0] + "()."
                 case "macro":
@@ -77,7 +79,7 @@ class NameStack:
                 case _:
                     out += name[0] + "."
 
-        return out.strip()[:-1]
+        return out.strip()[:-1], offset
 
 class GenericLoop: pass
 
@@ -85,11 +87,26 @@ class CompLoop:
     def __init__(self, comp):
         self.comp = comp
 
+class MutableStringBuffer:
+    def __init__(self):
+        self._array = []
+
+    def __iadd__(self, other):
+        if type(other) is str:
+            self._array.append(other)
+        elif type(other) is MutableStringBuffer:
+            self._array += other._array
+
+        return self
+
+    def __str__(self):
+        return "".join(self._array)
+
 class Macro:
     def __init__(self, name, args = None):
         self.name = name
         self.args = args
-        self.code = ""
+        self.code = MutableStringBuffer()
 
     def add(self, line):
         self.code += line
@@ -97,8 +114,8 @@ class Macro:
 class IfBlock:
     def __init__(self, cond):
         self.cond     = cond
-        self.ifCode   = ""
-        self.elseCode = ""
+        self.ifCode   = MutableStringBuffer()
+        self.elseCode = MutableStringBuffer()
         self._else    = False
 
     def add(self, line):

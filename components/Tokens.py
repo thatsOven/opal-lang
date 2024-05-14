@@ -24,6 +24,8 @@ SOFTWARE.
 
 import colorama
 
+from components.utils import MutableStringBuffer
+
 class Token:
     def __init__(self, tok, line = 0, pos = 0, tokens = None):
         self.tok     : str = tok
@@ -48,22 +50,23 @@ class Token:
         return range(self.line - 3, self.line + 2)
     
     def __message(self, type_, color, msg, location):
-        if self.tokens is None: print(color + f"{type_}{colorama.Style.RESET_ALL} {location}:", msg)
+        if self.tokens is None: print(color + f"{type_}{colorama.Style.RESET_ALL} {location[0]}:", msg)
         else:
             maxlineLen = len(str(self.maxline))
 
-            print(color + f"{type_}{colorama.Style.RESET_ALL} ({location}, line {self.line - 1}, pos {self.pos}):", msg)
+            print(color + f"{type_}{colorama.Style.RESET_ALL} ({location[0]}, line {self.line - location[1]}, pos {self.pos}):", msg)
 
+            offs = int(bool(location[1] - 1))
             for line in self.__getlines():
                 if line == self.line - 1:
                     print(
-                        f"{str(line).rjust(maxlineLen)} | " + self.tokens.source[line].rstrip() + "\n" + 
+                        f"{str(line - location[1] + offs).rjust(maxlineLen)} | " + self.tokens.source[line].rstrip() + "\n" + 
                         (" " * maxlineLen) + " |" + (" " * (self.pos + 1)) + color + ("^" * len(self.tok)) + colorama.Style.RESET_ALL
                     )
 
                     continue
                 
-                print(f"{str(line).rjust(maxlineLen)} | " + self.tokens.source[line].rstrip())
+                print(f"{str(line - location[1] + offs).rjust(maxlineLen)} | " + self.tokens.source[line].rstrip())
 
     def error(self, msg, location):
         self.__message("error", colorama.Fore.RED, msg, location)
@@ -114,7 +117,7 @@ class Tokens:
     def replaceTokens(self, tokens):
         i = 0
         while i < len(tokens):
-            match tokens[i].tok:
+            match str(tokens[i].tok):
                 case "||":
                     tokens[i].tok = "or"
                 case "&&":
@@ -124,16 +127,20 @@ class Tokens:
                 case "?":
                     tokens[i].tok = "_OPAL_PRINT_RETURN_"
                 case "super":
-                    if i + 1 < len(tokens) and tokens[i + 1].tok != "(":
+                    if i + 1 < len(tokens) and str(tokens[i + 1].tok) != "(":
                         tokens.insert(i + 1, Token("()"))
                         i += 1
             i += 1
+
+        for token in tokens:
+            if type(token.tok) is MutableStringBuffer:
+                token.tok = str(token.tok)
 
         return tokens
 
     @classmethod
     def verifyTok(self, tokens: list, first: Token, next: Token, opts):
-        if next.tok in opts:
+        if str(next.tok) in opts:
             first.tok += next.tok
             tokens.append(first)
             return True
@@ -169,7 +176,7 @@ class Tokens:
     def tokenize(self, source):
         line = 1
         pos  = 0
-        tmp           = [Token("", line, pos, self)]
+        tmp           = [Token(MutableStringBuffer(), line, pos, self)]
         inLineComment = False
         inString      = False
         inStringAlt   = False
@@ -181,7 +188,7 @@ class Tokens:
                     inLineComment = False
                     line += 1
                     pos   = 0
-                    tmp.append(Token("", line, pos, self))
+                    tmp.append(Token(MutableStringBuffer(), line, pos, self))
                     continue
                 
                 pos += 1
@@ -191,7 +198,7 @@ class Tokens:
                 case " " | "\t":
                     if inString or inStringAlt: tmp[-1].tok += ch
                     else:        
-                        tmp.append(Token("", line, pos + 1, self))
+                        tmp.append(Token(MutableStringBuffer(), line, pos + 1, self))
                 case "#":
                     if inString or inStringAlt: tmp[-1].tok += ch
                     else:
@@ -202,7 +209,7 @@ class Tokens:
 
                     if inString or inStringAlt: tmp[-1].tok += ch
                     else:
-                        tmp.append(Token("", line, pos, self))
+                        tmp.append(Token(MutableStringBuffer(), line, pos, self))
                         continue
                 case '"':
                     if inString:
@@ -211,7 +218,9 @@ class Tokens:
                     elif inStringAlt:
                         tmp[-1].tok += ch
                     else:
-                        tmp.append(Token(ch, line, pos, self))
+                        tok = MutableStringBuffer()
+                        tok += ch
+                        tmp.append(Token(tok, line, pos, self))
                         inString = True
                 case "'":
                     if inStringAlt:
@@ -220,7 +229,9 @@ class Tokens:
                     elif inString:
                         tmp[-1].tok += ch
                     else:
-                        tmp.append(Token(ch, line, pos, self))
+                        tok = MutableStringBuffer()
+                        tok += ch
+                        tmp.append(Token(tok, line, pos, self))
                         inStringAlt = True
                 case _:
                     if inString or inStringAlt:
@@ -228,22 +239,25 @@ class Tokens:
                     elif ch.isalnum() or ch == "_":
                         if lastSym:
                             lastSym = False
-                            tmp.append(Token(ch, line, pos, self))
+                            tok = MutableStringBuffer()
+                            tok += ch
+                            tmp.append(Token(tok, line, pos, self))
                         else:
                             tmp[-1].tok += ch
                     else:                            
                         lastSym = True
-                        tmp.append(Token(ch, line, pos, self))
+                        tok = MutableStringBuffer()
+                        tok += ch
+                        tmp.append(Token(tok, line, pos, self))
 
             pos += 1
 
-        i = 0
-        while i < len(tmp):
-            if tmp[i].tok == "":
-                tmp.pop(i)
-            else: 
-                tmp[i].maxline = line
-                i += 1
+        clean = []
+        for token in tmp:
+            if str(token.tok) != "":
+                token.maxline = line
+                clean.append(token)
+        tmp = clean
 
         tokens = []
         i = 0
@@ -251,7 +265,7 @@ class Tokens:
             token = tmp[i]
             i += 1
 
-            match token.tok:
+            match str(token.tok):
                 case "+":
                     if self.verifyTok(tokens, token, tmp[i], ("+", "=")): i += 1
                     continue
@@ -268,21 +282,24 @@ class Tokens:
                     if self.verifyTok(tokens, token, tmp[i], ("&", "=")): i += 1
                     continue
                 case "f" | "r" | "b" | "fr" | "br" | "rf" | "rb":
-                    if tmp[i].tok.startswith('"') or tmp[i].tok.startswith("'"):
+                    strTok = str(tmp[i].tok)
+                    if strTok.startswith('"') or strTok.startswith("'"):
                         token.tok += tmp[i].tok
                         i += 1
                 case ":" | "^" | "%" | "=":
-                    if tmp[i].tok == "=":
+                    if str(tmp[i].tok) == "=":
                         token.tok += tmp[i].tok
                         i += 1
                 case "*":
-                    if tmp[i].tok in ("*", "="):
-                        if tmp[i].tok == "*":
+                    strTok = str(tmp[i].tok)
+                    if strTok in ("*", "="):
+                        if strTok == "*":
                             next = tmp[i]
                             i += 1
 
-                            if i < len(tmp) and tmp[i].tok == "=":
-                                token.tok += next.tok + tmp[i].tok
+                            if i < len(tmp) and strTok == "=":
+                                token.tok += next.tok
+                                token.tok += tmp[i].tok
                                 i += 1
                             else: 
                                 token.tok += next.tok
@@ -290,13 +307,15 @@ class Tokens:
                             token.tok += tmp[i].tok
                             i += 1
                 case "/":
-                    if tmp[i].tok in ("/", "="):
-                        if tmp[i].tok == "/":
+                    strTok = str(tmp[i].tok)
+                    if strTok in ("/", "="):
+                        if strTok == "/":
                             next = tmp[i]
                             i += 1
 
-                            if i < len(tmp) and tmp[i].tok == "=":
-                                token.tok += next.tok + tmp[i].tok
+                            if i < len(tmp) and strTok == "=":
+                                token.tok += next.tok
+                                token.tok += tmp[i].tok
                                 i += 1
                             else: 
                                 token.tok += next.tok
@@ -304,13 +323,15 @@ class Tokens:
                             token.tok += tmp[i].tok
                             i += 1
                 case ">":
-                    if tmp[i].tok in (">", "="):
-                        if tmp[i].tok == ">":
+                    strTok = str(tmp[i].tok)
+                    if strTok in (">", "="):
+                        if strTok == ">":
                             next = tmp[i]
                             i += 1
 
-                            if i < len(tmp) and tmp[i].tok == "=":
-                                token.tok += next.tok + tmp[i].tok
+                            if i < len(tmp) and strTok == "=":
+                                token.tok += next.tok
+                                token.tok += tmp[i].tok
                                 i += 1
                             else: 
                                 token.tok += next.tok
@@ -318,13 +339,15 @@ class Tokens:
                             token.tok += tmp[i].tok
                             i += 1
                 case "<":
-                    if tmp[i].tok in ("<", "=", "-"):
-                        if tmp[i].tok == "<":
+                    strTok = str(tmp[i].tok)
+                    if strTok in ("<", "=", "-"):
+                        if strTok == "<":
                             next = tmp[i]
                             i += 1
 
-                            if i < len(tmp) and tmp[i].tok == "=":
-                                token.tok += next.tok + tmp[i].tok
+                            if i < len(tmp) and strTok == "=":
+                                token.tok += next.tok
+                                token.tok += tmp[i].tok
                                 i += 1
                             else: 
                                 token.tok += next.tok
@@ -332,17 +355,17 @@ class Tokens:
                             token.tok += tmp[i].tok
                             i += 1
                 case '""':
-                    if tmp[i].tok.startswith('"'):
+                    if str(tmp[i].tok).startswith('"'):
                         token.tok += tmp[i].tok
                         i += 1
-                    elif len(tokens) > 0 and tokens[-1].tok.endswith('"'):
+                    elif len(tokens) > 0 and str(tokens[-1].tok).endswith('"'):
                         tokens[-1].tok += token.tok
                         continue
                 case "''":
-                    if tmp[i].tok.startswith("'"):
+                    if str(tmp[i].tok).startswith("'"):
                         token.tok += tmp[i].tok
                         i += 1
-                    elif len(tokens) > 0 and tokens[-1].tok.endswith("'"):
+                    elif len(tokens) > 0 and str(tokens[-1].tok).endswith("'"):
                         tokens[-1].tok += token.tok
                         continue
 
@@ -353,10 +376,10 @@ class Tokens:
 
             match lastTok.tok:
                 case '""':
-                    if tokens[-1].tok.endswith('"'):
+                    if str(tokens[-1].tok).endswith('"'):
                         tokens[-1].tok += lastTok.tok
                 case "''":
-                    if tokens[-1].tok.endswith("'"):
+                    if str(tokens[-1].tok).endswith("'"):
                         tokens[-1].tok += lastTok.tok
                 case _:
                     tokens.append(lastTok)
