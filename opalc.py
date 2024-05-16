@@ -49,7 +49,8 @@ def build(file, debug = False):
             }),
             zip_safe = False
         )
-    except:
+    except Exception:
+        print(traceback.format_exc())
         ok = False
     else:
         ok = True
