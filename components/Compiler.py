@@ -2093,7 +2093,7 @@ class Compiler:
                 result += strippedLine.rstrip() + "\n"
             else:
                 tabs = len(line) - len(strippedLine)
-                result += f"__OPALSIG[EMBED_INFER]({tabs})." + strippedLine.rstrip() + ";\n"
+                result += f"__OPALSIG[EMBED_INFER]({tabs})." + Tokens(strippedLine.rstrip()).join() + ";\n"
 
         return str(result)
     
