@@ -47,10 +47,10 @@ class Utils:
 
         from libs.std import arraySwap as swap
 
-        from libs.sort       import sort
-        from libs.merge      import merge, mergeTwo
-        from libs.stableSort import stableSort
-        from libs.fastSort   import fastSort
+        from libs.sort     import sort
+        from libs.merge    import merge, mergeTwo
+        from libs.fastSort import fastSort
+        stableSort = sort # for backwards compatibility
 
     class Strings:
         from libs.std import justifyString as justify

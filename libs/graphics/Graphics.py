@@ -25,7 +25,6 @@ SOFTWARE.
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame, numpy, sys
-from libs.sort   import sort
 from libs.Vector import Vector
 from pathlib     import Path
 
@@ -47,7 +46,7 @@ def __circlepoints(r):
     points += [(y, x) for x, y in points if x > y]
     points += [(-x, y) for x, y in points if x]
     points += [(x, -y) for x, y in points if y]
-    sort(points)
+    points.sort()
     return points
 
 def _renderOutlineText(text, font, color, outlineColor, opx):

@@ -23,8 +23,8 @@ SOFTWARE.
 """
 
 from libs._internals import dynamic
-from libs.sort       import sort
-from libs.fastSort   import fastSort
+from libs.sort     import sort
+from libs.fastSort import fastSort
 
 class Array:
     def __init__(self, capacity, arrayType = dynamic, contents = None):
@@ -48,8 +48,8 @@ class Array:
     def toList(self):
         return self._array.copy()
 
-    def sort(self, start = 0, end = None):
-        if self._arrayType in (int, float):
+    def sort(self, start = 0, end = None, stable = True):
+        if (not stable) and self._arrayType in (int, float):
             fastSort(self._array, start, end)
         else:
             sort(self._array, start, end)
