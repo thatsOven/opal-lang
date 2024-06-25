@@ -1,6 +1,6 @@
 pyinstaller
 colorama
-pygame==2.5.0
+pygame-ce>=2.5.0
 numpy
 typeguard
 Cython
