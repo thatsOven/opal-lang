@@ -189,10 +189,11 @@ if __name__ == "__main__":
     if len(sys.argv) == 1:
         print(f"opal compiler v{'.'.join([str(x) for x in VERSION])} - thatsOven")
     else:
-        compiler = Compiler().initMain()
+        compiler = Compiler()
         compiler.handleArgs(sys.argv)
         compiler.preConsts["RELEASE_MODE"] = "False"
         compiler.preConsts["OPAL_DIR"] = f"r'{getHomeDirFromFile(__file__)}'"
+        compiler.initMain()
 
         if "--debug" in sys.argv:
             debug = True

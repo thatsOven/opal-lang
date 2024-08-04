@@ -28,7 +28,7 @@ from importlib         import import_module
 from traceback         import format_exception
 import os
 
-VERSION = (2024, 5, 25)
+VERSION = (2024, 8, 4)
 SET_OPS = ("+=", "-=", "**=", "//=", "*=", "/=", "%=", "&=", "|=", "^=", ">>=", "<<=", "@=", "=")
 CYTHON_TYPES = (
     "short", "int", "long", "long long", "float", "bint",
@@ -1753,7 +1753,8 @@ class Compiler:
 
     def initMain(self):
         self.comptimeCompiler = Compiler()
-        return self
+        self.comptimeCompiler.preConsts["RELEASE_MODE"] = "False"
+        self.comptimeCompiler.preConsts["OPAL_DIR"] = self.preConsts["OPAL_DIR"]
 
     def __lineWarn(self, msg, line):
         print(f"warning (line {str(line + 1)}):", msg)
