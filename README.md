@@ -423,7 +423,7 @@ new function add(a: int, b: str | int) int {
 		unchecked: return a + b;
 	}
 
-	return str(a) + b;
+	return a + int(b);
 }
 ```
 ### `static`
